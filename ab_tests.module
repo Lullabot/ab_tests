@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * @file
+ * Provides core functionality for the A/B Tests module.
+ */
+
+use Drupal\ab_tests\Hook\AbTestsHooks;
+use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Hook\Attribute\LegacyHook;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ *
+ * Provides help content for the A/B Tests module.
+ */
+#[LegacyHook]
+function ab_tests_help(string $route_name, RouteMatchInterface $route_match) {
+  return \Drupal::service(AbTestsHooks::class)->help($route_name, $route_match);
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+#[LegacyHook]
+function ab_tests_form_node_type_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+  return \Drupal::service(AbTestsHooks::class)->formNodeTypeFormAlter($form, $form_state, $form_id);
+}
+
+/**
+ * Implements hook_entity_build_defaults_alter().
+ */
+function ab_tests_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode) {
+}
+
+/**
+ * Implements hook_entity_view_alter().
+ */
+#[LegacyHook]
+function ab_tests_entity_view_alter(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display) {
+  return \Drupal::service(AbTestsHooks::class)->entityViewAlter($build, $entity, $display);
+}
+
+/**
+ * Implements hook_entity_view_mode_alter().
+ */
+#[LegacyHook]
+function ab_tests_entity_view_mode_alter(&$view_mode, EntityInterface $entity) {
+  return \Drupal::service(AbTestsHooks::class)->entityViewModeAlter($view_mode, $entity);
+}

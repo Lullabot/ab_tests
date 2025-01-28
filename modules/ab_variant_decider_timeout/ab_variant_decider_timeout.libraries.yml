@@ -1,0 +1,5 @@
+decider_timeout:
+  js:
+    js/decider-timeout.js: {}
+  dependencies:
+    - core/once

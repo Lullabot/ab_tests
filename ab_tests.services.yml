@@ -1,0 +1,8 @@
+services:
+  Drupal\ab_tests\EntityHelper:
+    autowire: true
+  Drupal\ab_tests\Hook\AbTestsHooks:
+    autowire: true
+  Drupal\ab_tests\AbVariantDeciderPluginManager:
+    autowire: true
+    parent: default_plugin_manager

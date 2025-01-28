@@ -1,0 +1,3 @@
+ab_variant_decider_null:
+  js:
+    js/ab-variant-decider.js: {}
