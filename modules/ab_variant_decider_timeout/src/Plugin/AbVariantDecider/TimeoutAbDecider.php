@@ -74,17 +74,17 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
     $minimum = $form_state->getValue(['timeout', 'min']);
     $maximum = $form_state->getValue(['timeout', 'max']);
     if (!is_numeric($minimum) || $minimum < 0) {
-      $form_state->setError($form[$this->getPluginId()]['timeout']['min'], $this->t('The minimum should be a positive number.'));
+      $form_state->setError($form['timeout']['min'], $this->t('The minimum should be a positive number.'));
     }
     if (!is_numeric($maximum) || $maximum < 0) {
-      $form_state->setError($form[$this->getPluginId()]['timeout']['max'], $this->t('The maximum should be a positive number.'));
+      $form_state->setError($form['timeout']['max'], $this->t('The maximum should be a positive number.'));
     }
     if ($minimum > $maximum) {
-      $form_state->setError($form[$this->getPluginId()]['timeout'], $this->t('The minimum cannot be greater than the maximum.'));
+      $form_state->setError($form['timeout'], $this->t('The minimum cannot be greater than the maximum.'));
     }
-    $available_variants = $form_state->getValue(['available_variants']);
+    $available_variants = array_filter($form_state->getValue(['available_variants']));
     if (count($available_variants) < 2) {
-      $form_state->setError($form[$this->getPluginId()]['available_variants'], $this->t('Select, at least, two variants for the A/B test.'));
+      $form_state->setError($form['available_variants'], $this->t('Select, at least, two variants for the A/B test.'));
     }
   }
 

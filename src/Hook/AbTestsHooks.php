@@ -251,7 +251,7 @@ class AbTestsHooks {
       $decider = $this->variantDeciderManager->createInstance($decider_id);
       assert($decider instanceof PluginFormInterface);
       $subform_state = SubformState::createForSubform($form['ab_tests']['variants'][$decider_id], $form, $form_state);
-      $decider->submitConfigurationForm($form['ab_tests']['variants'][$decider_id], $form_state);
+      $decider->submitConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
     }
     catch (PluginException $e) {
     }
@@ -267,10 +267,10 @@ class AbTestsHooks {
       assert($decider instanceof PluginFormInterface);
       $subform_state = SubformState::createForSubform(
         $form['ab_tests']['variants'][$decider_id],
-        $form['ab_tests']['variants'][$decider_id],
+        $form,
         $form_state,
       );
-      $decider->validateConfigurationForm($form['ab_tests']['variants'][$decider_id], $form_state);
+      $decider->validateConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
     }
     catch (PluginException $e) {
     }
