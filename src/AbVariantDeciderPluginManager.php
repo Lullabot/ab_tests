@@ -1,4 +1,6 @@
-<?php declare(strict_types = 1);
+<?php
+
+declare(strict_types = 1);
 
 namespace Drupal\ab_tests;
 
@@ -25,20 +27,25 @@ final class AbVariantDeciderPluginManager extends DefaultPluginManager {
   /**
    * Instantiates all the variant decider plugins.
    *
+   * @param array|null $plugin_ids
+   *   The IDs to load.
+   * @param array $settings
+   *   The settings for the deciders.
+   *
    * @return \Drupal\ab_tests\AbVariantDeciderInterface[]
    *   The plugin instances.
    */
-  public function getDeciders($plugin_ids = NULL): array {
-    if (!$plugin_ids) {
+  public function getDeciders(array $plugin_ids = NULL, array $settings = []): array {
+    if (is_null($plugin_ids)) {
       $definitions = $this->getDefinitions();
       $plugin_ids = array_map(function ($definition) {
         return empty($definition) ? NULL : $definition['id'];
       }, $definitions);
       $plugin_ids = array_filter(array_values($plugin_ids));
     }
-    $deciders = array_map(function ($plugin_id) {
+    $deciders = array_map(function ($plugin_id) use ($settings) {
       try {
-        return $this->createInstance($plugin_id);
+        return $this->createInstance($plugin_id, $settings[$plugin_id] ?? []);
       }
       catch (PluginException) {
         return NULL;

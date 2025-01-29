@@ -8,6 +8,9 @@ use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\DependentPluginInterface;
 use Drupal\Component\Plugin\PluginBase;
 use Drupal\Component\Render\MarkupInterface;
+use Drupal\Core\Config\Entity\ConfigEntityInterface;
+use Drupal\Core\Entity\EntityFormInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
@@ -106,7 +109,15 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    $this->setConfiguration($form_state->getValues(['ab_tests', 'variants', $this->getPluginId()]) + $this->configuration);
+    $form_object = $form_state->getFormObject();
+    if (!$form_object instanceof EntityFormInterface) {
+      return;
+    }
+    $bundle_entity = $form_object->getEntity();
+    if (!$bundle_entity instanceof ConfigEntityInterface) {
+      return;
+    }
+    $this->setConfiguration($form_state->getValues() + $this->configuration);
   }
 
 }
