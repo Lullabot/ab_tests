@@ -77,10 +77,10 @@ class AbTestsHooks {
     if (!$is_active) {
       return;
     }
-    if (empty($settings['skeleton']['display_mode'])) {
+    if (empty($settings['default']['display_mode'])) {
       return;
     }
-    $view_mode = substr($settings['skeleton']['display_mode'], strlen($entity->getEntityTypeId()) + 1);
+    $view_mode = substr($settings['default']['display_mode'], strlen($entity->getEntityTypeId()) + 1);
   }
 
   /**
@@ -142,9 +142,9 @@ class AbTestsHooks {
       '#default_value' => (bool) ($settings['is_active'] ?? FALSE),
     ];
 
-    $form['ab_tests']['skeleton'] = [
-      '#title' => t('Skeleton'),
-      '#description' => t('Configure the skeleton of the A/B test. The skeleton is a version of the entity shown to the user while the A/B variant to load is still undecided.'),
+    $form['ab_tests']['default'] = [
+      '#title' => t('Default'),
+      '#description' => t('The default version of the A/B test. This is rendered, then hidden from the user. We will unhide this if there is any error with the deciders.'),
       '#description_display' => 'before',
       '#type' => 'fieldset',
       '#tree' => TRUE,
@@ -160,13 +160,13 @@ class AbTestsHooks {
       array_map(static fn(array $view_mode) => $view_mode['label'] ?? '', $view_modes),
     );
     // Add the display mode selector to the form.
-    $form['ab_tests']['skeleton']['display_mode'] = [
+    $form['ab_tests']['default']['display_mode'] = [
       '#type' => 'select',
       '#title' => t('Display Mode'),
       '#description' => t('The entity will be rendered with this display mode while the variant is undecided.'),
       '#options' => [NULL => t('- Select One -'), ...$options],
       '#required' => TRUE,
-      '#default_value' => $settings['skeleton']['display_mode'] ?? 'default',
+      '#default_value' => $settings['default']['display_mode'] ?? 'default',
     ];
 
     $form['ab_tests']['variants'] = [
