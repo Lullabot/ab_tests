@@ -109,15 +109,8 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    $form_object = $form_state->getFormObject();
-    if (!$form_object instanceof EntityFormInterface) {
-      return;
-    }
-    $bundle_entity = $form_object->getEntity();
-    if (!$bundle_entity instanceof ConfigEntityInterface) {
-      return;
-    }
-    $this->setConfiguration($form_state->getValues() + $this->configuration);
+    // Nothing to do on submission, storing the values is handled by the config
+    // entity's 3rd party settings.
   }
 
 }

@@ -127,7 +127,6 @@ class AbTestsHooks {
 
     $settings = $type->getThirdPartySettings('ab_tests')['ab_tests'] ?? [];
     $form['#validate'][] = [$this, 'validateVariants'];
-    $form['actions']['submit']['#submit'][] = [$this, 'submitVariants'];
     $form['ab_tests'] = [
       '#type' => 'details',
       '#title' => t('A/B Tests'),
@@ -274,25 +273,6 @@ class AbTestsHooks {
         $form_state,
       );
       $decider->validateConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
-    }
-    catch (PluginException $e) {
-    }
-  }
-
-  /**
-   * Validates the configuration form for the deciders.
-   */
-  public function submitVariants(array &$form, FormStateInterface $form_state): void {
-    $decider_id = $form_state->getValue(['ab_tests', 'variants', 'decider']);
-    try {
-      $decider = $this->variantDeciderManager->createInstance($decider_id);
-      assert($decider instanceof PluginFormInterface);
-      $subform_state = SubformState::createForSubform(
-        $form['ab_tests']['variants'][$decider_id],
-        $form,
-        $form_state,
-      );
-      $decider->submitConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
     }
     catch (PluginException $e) {
     }
