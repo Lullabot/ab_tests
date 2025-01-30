@@ -31,12 +31,6 @@ function ab_tests_form_node_type_form_alter(array &$form, FormStateInterface $fo
 }
 
 /**
- * Implements hook_entity_build_defaults_alter().
- */
-function ab_tests_entity_build_defaults_alter(array &$build, EntityInterface $entity, $view_mode) {
-}
-
-/**
  * Implements hook_entity_view_alter().
  */
 #[LegacyHook]

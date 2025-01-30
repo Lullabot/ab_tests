@@ -60,7 +60,7 @@ class AbTestsHooks {
     if ($route_name !== 'help.page.ab_tests') {
       return NULL;
     }
-    return '<p>' . t('The A/B Tests module helps to set up A/B tests to optimize user experiences.') . '</p>';
+    return '<p>' . $this->t('The A/B Tests module helps to set up A/B tests to optimize user experiences.') . '</p>';
   }
 
   /**
@@ -99,7 +99,10 @@ class AbTestsHooks {
     // Attach the library from the variant resolver.
     $variant_decider_id = $settings['variants']['decider'] ?? 'null';
     try {
-      $variant_decider = $this->variantDeciderManager->createInstance($variant_decider_id);
+      $variant_decider = $this->variantDeciderManager->createInstance(
+        $variant_decider_id,
+        $settings['variants'][$variant_decider_id],
+      );
       assert($variant_decider instanceof AbVariantDeciderInterface);
       $decider_build = $variant_decider->build();
     }
@@ -109,6 +112,7 @@ class AbTestsHooks {
       ];
     }
     $build['ab_tests_decider'] = $decider_build;
+    $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
   }
 
   /**
@@ -129,7 +133,7 @@ class AbTestsHooks {
     $form['#validate'][] = [$this, 'validateVariants'];
     $form['ab_tests'] = [
       '#type' => 'details',
-      '#title' => t('A/B Tests'),
+      '#title' => $this->t('A/B Tests'),
       '#tree' => TRUE,
     ];
     if (isset($form['additional_settings']) && $form['additional_settings']['#type'] === 'vertical_tabs') {
@@ -137,14 +141,14 @@ class AbTestsHooks {
     }
     $form['ab_tests']['is_active'] = [
       '#type' => 'checkbox',
-      '#title' => t('Enable A/B tests'),
-      '#description' => t('If enabled, this node type will be used to create A/B tests.'),
+      '#title' => $this->t('Enable A/B tests'),
+      '#description' => $this->t('If enabled, this node type will be used to create A/B tests.'),
       '#default_value' => (bool) ($settings['is_active'] ?? FALSE),
     ];
 
     $form['ab_tests']['default'] = [
-      '#title' => t('Default'),
-      '#description' => t('The default version of the A/B test. This is rendered, then hidden from the user. We will unhide this if there is any error with the deciders.'),
+      '#title' => $this->t('Default'),
+      '#description' => $this->t('The default version of the A/B test. This is rendered, then hidden from the user. We will unhide this if there is any error with the deciders.'),
       '#description_display' => 'before',
       '#type' => 'fieldset',
       '#tree' => TRUE,
@@ -162,17 +166,17 @@ class AbTestsHooks {
     // Add the display mode selector to the form.
     $form['ab_tests']['default']['display_mode'] = [
       '#type' => 'select',
-      '#title' => t('Display Mode'),
-      '#description' => t('The entity will be rendered with this display mode while the variant is undecided.'),
-      '#options' => [NULL => t('- Select One -'), ...$options],
+      '#title' => $this->t('Display Mode'),
+      '#description' => $this->t('The entity will be rendered with this display mode while the variant is undecided.'),
+      '#options' => [NULL => $this->t('- Select One -'), ...$options],
       '#required' => TRUE,
       '#default_value' => $settings['default']['display_mode'] ?? 'default',
     ];
 
     $form['ab_tests']['variants'] = [
       '#type' => 'fieldset',
-      '#title' => t('Variants'),
-      '#description' => t('Configure the variants of the A/B tests. A variant decider is responsible for deciding which variant to load. This may be a random variant, using a provider like LaunchDarkly, etc.'),
+      '#title' => $this->t('Variants'),
+      '#description' => $this->t('Configure the variants of the A/B tests. A variant decider is responsible for deciding which variant to load. This may be a random variant, using a provider like LaunchDarkly, etc.'),
       '#description_display' => 'before',
       '#states' => [
         'visible' => [
@@ -182,13 +186,13 @@ class AbTestsHooks {
     ];
     // List all plugin variants.
     $deciders = $this->variantDeciderManager->getDeciders(
-      settings: $settings['variants']
+      settings: $settings['variants'] ?? []
     );
     $form['ab_tests']['variants']['decider'] = [
       '#type' => 'radios',
-      '#title' => t('Variant Decider'),
+      '#title' => $this->t('Variant Decider'),
       '#options' => array_combine(
-        array_map(static fn(AbVariantDeciderInterface $decider) => $decider->getPluginId(), $deciders),
+        array_map(static fn(PluginInspectionInterface $decider) => $decider->getPluginId(), $deciders),
         array_map(static fn(AbVariantDeciderInterface $decider) => $decider->label(), $deciders),
       ),
       '#default_value' => $settings['variants']['decider'] ?? NULL,
@@ -196,7 +200,7 @@ class AbTestsHooks {
     ];
     $form = array_reduce(
       $deciders,
-      function (array $form, AbVariantDeciderInterface $decider) use ($form_state, $settings) {
+      function (array $form, AbVariantDeciderInterface $decider) use ($form_state) {
         assert($decider instanceof PluginFormInterface);
         assert($decider instanceof PluginInspectionInterface);
         $form['ab_tests']['variants'][$decider->getPluginId()] = [
@@ -239,8 +243,6 @@ class AbTestsHooks {
    *   The form array where the settings are retrieved from.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state object that contains the submitted form values.
-   *
-   * @return void
    */
   public function entityBuilder(string $entity_type, NodeTypeInterface $type, array &$form, FormStateInterface $form_state): void {
     $type->setThirdPartySetting(

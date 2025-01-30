@@ -8,9 +8,6 @@ use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\DependentPluginInterface;
 use Drupal\Component\Plugin\PluginBase;
 use Drupal\Component\Render\MarkupInterface;
-use Drupal\Core\Config\Entity\ConfigEntityInterface;
-use Drupal\Core\Entity\EntityFormInterface;
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
@@ -60,6 +57,11 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
     return [
       '#attached' => [
         'library' => [$this->pluginDefinition['decider_library'] ?? 'ab_test/ab_variant_decider_null'],
+        'drupalSettings' => [
+          'ab_tests' => [
+            'deciderSettings' => $this->getConfiguration(),
+          ],
+        ],
       ],
     ];
   }

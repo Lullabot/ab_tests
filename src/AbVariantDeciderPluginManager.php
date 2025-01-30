@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
@@ -35,7 +35,7 @@ final class AbVariantDeciderPluginManager extends DefaultPluginManager {
    * @return \Drupal\ab_tests\AbVariantDeciderInterface[]
    *   The plugin instances.
    */
-  public function getDeciders(array $plugin_ids = NULL, array $settings = []): array {
+  public function getDeciders(?array $plugin_ids = NULL, array $settings = []): array {
     if (is_null($plugin_ids)) {
       $definitions = $this->getDefinitions();
       $plugin_ids = array_map(function ($definition) {

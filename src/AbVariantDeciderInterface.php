@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
@@ -13,11 +13,17 @@ interface AbVariantDeciderInterface {
 
   /**
    * Returns the translated plugin label.
+   *
+   * @return string
+   *   The translated plugin label.
    */
   public function label(): string;
 
   /**
    * Returns the translated plugin description.
+   *
+   * @return \Drupal\Component\Render\MarkupInterface
+   *   The translated plugin description.
    */
   public function description(): MarkupInterface;
 
