@@ -3,7 +3,9 @@
 namespace Drupal\ab_variant_decider_timeout\Plugin\AbVariantDecider;
 
 use Drupal\ab_tests\AbVariantDeciderPluginBase;
+use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ab_variant_decider.
@@ -16,6 +18,35 @@ use Drupal\Core\Form\FormStateInterface;
  * )
  */
 class TimeoutAbDecider extends AbVariantDeciderPluginBase {
+
+  /**
+   * Creates a new TimeoutAbDecider object.
+   *
+   * @param array $configuration
+   *   The configuration.
+   * @param string $plugin_id
+   *   The plugin ID.
+   * @param array $plugin_definition
+   *   The plugin definition.
+   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
+   *   The entity display repository.
+   */
+  public function __construct(
+    array $configuration,
+    string $plugin_id,
+    array $plugin_definition,
+    protected readonly EntityDisplayRepositoryInterface $entityDisplayRepository,
+  ) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    $entity_display_repository = $container->get('entity_display.repository');
+    return new static($configuration, $plugin_id, $plugin_definition, $entity_display_repository);
+  }
 
   /**
    * {@inheritdoc}
@@ -31,11 +62,11 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    $view_modes = [
-      'gated__full' => $this->t('Gated Full'),
-      'full' => $this->t('Full'),
-      'embedded' => $this->t('Embedded'),
-    ];
+    $view_modes = $this->entityDisplayRepository->getViewModes('node');
+    $options = array_combine(
+      array_map(static fn(array $view_mode) => substr($view_mode['id'] ?? '', 5), $view_modes),
+      array_map(static fn(array $view_mode) => $view_mode['label'] ?? '', $view_modes),
+    );
     $configuration = $this->getConfiguration();
     return [
       'timeout' => [
@@ -61,7 +92,7 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
       'available_variants' => [
         '#title' => $this->t('Available Variants'),
         '#type' => 'checkboxes',
-        '#options' => $view_modes,
+        '#options' => $options,
         '#default_value' => $configuration['available_variants'],
       ],
     ];
