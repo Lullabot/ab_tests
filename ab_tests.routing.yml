@@ -1,0 +1,7 @@
+ab_tests.render_variant:
+  path: '/ab-tests/render/{uuid}/{display_mode}'
+  defaults:
+    # @todo use a UUID param upcaster.
+    _controller: '\Drupal\ab_tests\Controller\AbTestsController::renderVariant'
+  requirements:
+    _permission: 'access content'
