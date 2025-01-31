@@ -9,7 +9,7 @@
       if (AbTests.instance) {
         return AbTests.instance;
       }
-      
+
       this.decisions = new Map();
       this.elements = new Map();
       this.deciders = new Map();
@@ -32,10 +32,10 @@
         return this;
       }
       this.elements.set(uuid, element);
-      
+
       // Hide the default variant and show skeleton.
       this._showSkeleton(element);
-      
+
       return this;
     }
 
@@ -44,14 +44,15 @@
      *
      * @param {string} uuid
      *   The UUID of the A/B test.
-     * @param {Object} decider
+     * @param {BaseDecider} decider
      *   The decider instance that implements decide().
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
     registerDecider(uuid, decider) {
+      decider.setStatus('pending');
       this.deciders.set(uuid, decider);
-      
+
       // Start the decision process.
       return this._makeDecision(uuid);
     }
@@ -67,7 +68,7 @@
     async _makeDecision(uuid) {
       const element = this.elements.get(uuid);
       const decider = this.deciders.get(uuid);
-      
+
       if (!element || !decider) {
         return Promise.reject(new Error('Missing element or decider for UUID: ' + uuid));
       }
@@ -75,15 +76,17 @@
       try {
         this.debug && console.debug('A/B Tests', 'A decision is about to be made.');
         const decision = await decider.decide();
+        decider.setStatus('success');
+        this.status = 'success';
         this.debug && console.debug('A/B Tests', 'A decision was reached.', decision);
         await this._handleDecision(uuid, decision);
         return decision;
       }
       catch (error) {
-        console.error('Decision failed:', error);
+        decider.onError(error);
+        this.debug && console.error('A/B Tests', 'Decision failed:', error);
         // On error, show the default variant.
         this._showDefaultVariant(element);
-        throw error;
       }
     }
 
@@ -174,4 +177,4 @@
 
   // Make the singleton instance available globally.
   Drupal.abTests = new AbTests();
-})(Drupal, drupalSettings); 
+})(Drupal, drupalSettings);

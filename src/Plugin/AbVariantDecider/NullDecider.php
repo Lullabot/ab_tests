@@ -13,7 +13,7 @@ use Drupal\ab_tests\AbVariantDeciderPluginBase;
  *   id = "null",
  *   label = @Translation("Null"),
  *   description = @Translation("A decider that always errors out. Only useful for QA, and debugging. Do not use in production."),
- *   decider_library = "ab_test/ab_variant_decider_null",
+ *   decider_library = "ab_tests/ab_variant_decider.null",
  * )
  */
 final class NullDecider extends AbVariantDeciderPluginBase {}

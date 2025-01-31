@@ -16,6 +16,7 @@ use Drupal\Core\Form\SubformState;
 use Drupal\Core\Hook\Attribute\Hook;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeTypeInterface;
@@ -44,12 +45,15 @@ class AbTestsHooks {
    *   The request stack.
    * @param \Drupal\ab_tests\AbVariantDeciderPluginManager $variantDeciderManager
    *   The variant decider manager.
+   * @param \Drupal\Core\Routing\ResettableStackedRouteMatchInterface $routeMatch
+   *   The route match.
    */
   public function __construct(
     private readonly EntityHelper $entityHelper,
     private readonly EntityDisplayRepositoryInterface $entityDisplayRepository,
     private readonly RequestStack $requestStack,
     private readonly AbVariantDeciderPluginManager $variantDeciderManager,
+    private readonly RouteMatchInterface $routeMatch,
   ) {}
 
   /**
@@ -68,6 +72,10 @@ class AbTestsHooks {
    */
   #[Hook('entity_view_mode_alter')]
   public function entityViewModeAlter(&$view_mode, EntityInterface $entity): void {
+    // Do not affect the Ajax re-render of the entity.
+    if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
+      return;
+    }
     // @todo Should `full` be configurable?
     if (!$this->isFullPageEntity($entity) || $view_mode !== 'full') {
       return;
@@ -88,6 +96,10 @@ class AbTestsHooks {
    */
   #[Hook('entity_view_alter')]
   public function entityViewAlter(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display): void {
+    // Do not affect the Ajax re-render of the entity.
+    if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
+      return;
+    }
     if (!$this->isFullPageEntity($entity)) {
       return;
     }
@@ -101,7 +113,7 @@ class AbTestsHooks {
     try {
       $variant_decider = $this->variantDeciderManager->createInstance(
         $variant_decider_id,
-        $settings['variants'][$variant_decider_id],
+        $settings['variants'][$variant_decider_id] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
       $decider_build = $variant_decider->build();
@@ -114,6 +126,28 @@ class AbTestsHooks {
     $build['ab_tests_decider'] = $decider_build;
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+  }
+
+  /**
+   * Implements hook_preprocess_node().
+   *
+   * Sets the 'page' variable to TRUE when re-rendering the node via Ajax.
+   */
+  #[Hook('hook_preprocess_node')]
+  public function preprocessNode(&$variables): void {
+    $route_name = $this->requestStack->getCurrentRequest()->get(RouteObjectInterface::ROUTE_NAME);
+    if ($route_name !== 'ab_tests.render_variant') {
+      return;
+    }
+    $entity = $variables['node'] ?? NULL;
+    if (!$entity instanceof EntityInterface) {
+      return;
+    }
+    if (!$this->isFullPageEntity($entity)) {
+      return;
+    }
+    // We are dealing with the re-render of the A/B test.
+    $variables['page'] = TRUE;
   }
 
   /**
@@ -327,10 +361,14 @@ class AbTestsHooks {
    *   FALSE otherwise.
    */
   private function isFullPageEntity(EntityInterface $entity): bool {
-    $page_entity = $this->requestStack
-      ->getCurrentRequest()
+    $request = $this->requestStack->getCurrentRequest();
+    $page_entity = $request
       ->get($entity->getEntityTypeId());
-    return $page_entity instanceof EntityInterface && $page_entity->uuid() === $entity->uuid();
+    if ($page_entity instanceof EntityInterface) {
+      return $page_entity->uuid() === $entity->uuid();
+    }
+    $uuid = $request->get('uuid');
+    return $uuid === $entity->uuid();
   }
 
 }

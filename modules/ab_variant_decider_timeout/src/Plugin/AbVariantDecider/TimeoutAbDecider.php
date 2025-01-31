@@ -14,7 +14,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   id = "timeout",
  *   label = @Translation("Timeout"),
  *   description = @Translation("A/B variant decider based on a random timeout."),
- *   decider_library = "ab_variant_decider_timeout/decider_timeout",
+ *   decider_library = "ab_variant_decider_timeout/ab_variant_decider.timeout",
  * )
  */
 class TimeoutAbDecider extends AbVariantDeciderPluginBase {
