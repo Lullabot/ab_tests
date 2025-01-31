@@ -1,3 +1,13 @@
 ab_variant_decider_null:
   js:
     js/ab-variant-decider.js: {}
+
+ab_tests:
+  js:
+    js/ab-tests.js: {}
+    js/base-decider.js: {}
+    js/decision.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupal.ajax
+    - core/drupalSettings
