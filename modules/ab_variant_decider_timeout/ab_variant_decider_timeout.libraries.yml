@@ -3,3 +3,4 @@ decider_timeout:
     js/decider-timeout.js: {}
   dependencies:
     - core/once
+    - ab_tests/ab_tests

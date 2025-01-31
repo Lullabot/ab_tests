@@ -113,6 +113,7 @@ class AbTestsHooks {
     }
     $build['ab_tests_decider'] = $decider_build;
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
+    $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
   }
 
   /**
@@ -144,6 +145,12 @@ class AbTestsHooks {
       '#title' => $this->t('Enable A/B tests'),
       '#description' => $this->t('If enabled, this node type will be used to create A/B tests.'),
       '#default_value' => (bool) ($settings['is_active'] ?? FALSE),
+    ];
+    $form['ab_tests']['debug'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Debug'),
+      '#description' => $this->t('If enabled, debug statements will be printed in the JS console.'),
+      '#default_value' => (bool) ($settings['debug'] ?? FALSE),
     ];
 
     $form['ab_tests']['default'] = [
