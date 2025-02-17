@@ -2,6 +2,8 @@
 
 namespace Drupal\ab_tests\Hook;
 
+use Drupal\ab_tests\AbAnalyticsInterface;
+use Drupal\ab_tests\AbAnalyticsPluginManager;
 use Drupal\ab_tests\AbVariantDeciderInterface;
 use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\ab_tests\EntityHelper;
@@ -47,6 +49,8 @@ class AbTestsHooks {
    *   The variant decider manager.
    * @param \Drupal\Core\Routing\ResettableStackedRouteMatchInterface $routeMatch
    *   The route match.
+   * @param \Drupal\ab_tests\AbAnalyticsPluginManager $analyticsManager
+   *   The analytics manager.
    */
   public function __construct(
     private readonly EntityHelper $entityHelper,
@@ -54,6 +58,7 @@ class AbTestsHooks {
     private readonly RequestStack $requestStack,
     private readonly AbVariantDeciderPluginManager $variantDeciderManager,
     private readonly RouteMatchInterface $routeMatch,
+    private readonly AbAnalyticsPluginManager $analyticsManager,
   ) {}
 
   /**
@@ -116,11 +121,11 @@ class AbTestsHooks {
         $settings['variants'][$variant_decider_id] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
-      $decider_build = $variant_decider->build();
+      $decider_build = $variant_decider->toRenderable();
     }
     catch (PluginException $e) {
       $decider_build = [
-        '#attached' => ['library' => ['ab_tests/ab_variant_decider_null']],
+        '#attached' => ['library' => ['ab_tests/ab_variant_decider.null']],
       ];
     }
     $build['ab_tests_decider'] = $decider_build;
@@ -236,15 +241,15 @@ class AbTestsHooks {
         array_map(static fn(PluginInspectionInterface $decider) => $decider->getPluginId(), $deciders),
         array_map(static fn(AbVariantDeciderInterface $decider) => $decider->label(), $deciders),
       ),
-      '#default_value' => $settings['variants']['decider'] ?? NULL,
+      '#default_value' => $settings['variants']['decider'] ?? 'null',
       '#required' => TRUE,
     ];
     $form = array_reduce(
       $deciders,
-      function (array $form, AbVariantDeciderInterface $decider) use ($form_state) {
+      function (array $form_array, AbVariantDeciderInterface $decider) use ($form_state) {
         assert($decider instanceof PluginFormInterface);
         assert($decider instanceof PluginInspectionInterface);
-        $form['ab_tests']['variants'][$decider->getPluginId()] = [
+        $form_array['ab_tests']['variants'][$decider->getPluginId()] = [
           '#type' => 'fieldset',
           '#title' => $decider->label(),
           '#description' => $decider->description(),
@@ -256,16 +261,72 @@ class AbTestsHooks {
           ],
         ];
         $subform_state = SubformState::createForSubform(
-          $form,
-          $form,
+          $form_array,
+          $form_array,
           $form_state
         );
-        $settings_form = $decider->buildConfigurationForm($form, $subform_state);
+        $settings_form = $decider->buildConfigurationForm($form_array, $subform_state);
         if (empty($settings_form)) {
           $settings_form = ['#markup' => $this->t('<p>- No configuration options for this decider -</p>')];
         }
-        $form['ab_tests']['variants'][$decider->getPluginId()] += $settings_form;
-        return $form;
+        $form_array['ab_tests']['variants'][$decider->getPluginId()] += $settings_form;
+        return $form_array;
+      },
+      $form,
+    );
+
+    $form['ab_tests']['analytics'] = [
+      '#type' => 'fieldset',
+      '#title' => $this->t('Analytics'),
+      '#description' => $this->t('Configure the trackers for the A/B tests. An analytics tracker is responsible for recording success / failure for the A/B test. This may send data to Google Analytics, etc.'),
+      '#description_display' => 'before',
+      '#states' => [
+        'visible' => [
+          ':input[name="ab_tests[is_active]"]' => ['checked' => TRUE],
+        ],
+      ],
+    ];
+    // List all analytics plugins.
+    $analytics = $this->analyticsManager->getAnalytics(
+      settings: $settings['analytics'] ?? []
+    );
+    $form['ab_tests']['analytics']['tracker'] = [
+      '#type' => 'radios',
+      '#title' => $this->t('Analytics Tracker'),
+      '#options' => array_combine(
+        array_map(static fn(PluginInspectionInterface $analytics) => $analytics->getPluginId(), $analytics),
+        array_map(static fn(AbAnalyticsInterface $analytics) => $analytics->label(), $analytics),
+      ),
+      '#default_value' => $settings['analytics']['tracker'] ?? 'null',
+      '#required' => TRUE,
+    ];
+    $form = array_reduce(
+      $analytics,
+      function (array $form_array, AbAnalyticsInterface $analytics) use ($form_state) {
+        assert($analytics instanceof PluginFormInterface);
+        assert($analytics instanceof PluginInspectionInterface);
+        $form_array['ab_tests']['analytics'][$analytics->getPluginId()] = [
+          '#type' => 'fieldset',
+          '#title' => $analytics->label(),
+          '#description' => $analytics->description(),
+          '#description_display' => 'before',
+          '#states' => [
+            'visible' => [
+              ':input[name="ab_tests[analytics][tracker]"]' => ['value' => $analytics->getPluginId()],
+            ],
+          ],
+        ];
+        $subform_state = SubformState::createForSubform(
+          $form_array,
+          $form_array,
+          $form_state
+        );
+        $settings_form = $analytics->buildConfigurationForm($form_array, $subform_state);
+        if (empty($settings_form)) {
+          $settings_form = ['#markup' => $this->t('<p>- No configuration options for this analytics plugin -</p>')];
+        }
+        $form_array['ab_tests']['analytics'][$analytics->getPluginId()] += $settings_form;
+        return $form_array;
       },
       $form,
     );

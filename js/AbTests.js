@@ -13,6 +13,7 @@
       this.decisions = new Map();
       this.elements = new Map();
       this.deciders = new Map();
+      this.trackers = new Map();
       this.debug = drupalSettings?.ab_tests?.debug || false;
       AbTests.instance = this;
     }
@@ -29,6 +30,10 @@
       const uuid = element.getAttribute('data-ab-tests-entity-root');
       if (!uuid) {
         this.debug && console.warn('A/B Tests', 'Element missing data-ab-tests-entity-root attribute:', element);
+        return this;
+      }
+      // Only register elements once.
+      if (this.elements.get(uuid)) {
         return this;
       }
       this.elements.set(uuid, element);
@@ -58,6 +63,24 @@
     }
 
     /**
+     * Registers a tracker for a specific test.
+     *
+     * @param {string} uuid
+     *   The UUID of the A/B test.
+     * @param {BaseTracker} tracker
+     *   The tracker instance that implements track().
+     * @returns {Promise<Decision>}
+     *   Resolves with the decision once made.
+     */
+    registerTracker(uuid, tracker) {
+      tracker.setStatus('pending');
+      this.trackers.set(uuid, tracker);
+
+      // Start the tracking process.
+      return this._doTrack(uuid);
+    }
+
+    /**
      * Internal method to make a decision using the registered decider.
      *
      * @param {string} uuid
@@ -77,7 +100,6 @@
         this.debug && console.debug('A/B Tests', 'A decision is about to be made.');
         const decision = await decider.decide();
         decider.setStatus('success');
-        this.status = 'success';
         this.debug && console.debug('A/B Tests', 'A decision was reached.', decision);
         await this._handleDecision(uuid, decision);
         return decision;
@@ -87,6 +109,35 @@
         this.debug && console.error('A/B Tests', 'Decision failed:', error);
         // On error, show the default variant.
         this._showDefaultVariant(element);
+      }
+    }
+
+    /**
+     * Internal method to track a test result using the registered tracker.
+     *
+     * @param {string} uuid
+     *   The UUID of the A/B test.
+     * @returns {Promise<Decision>}
+     *   Resolves with the tracking made.
+     */
+    async _doTrack(uuid) {
+      const element = this.elements.get(uuid);
+      const tracker = this.trackers.get(uuid);
+
+      if (!element || !decider) {
+        return Promise.reject(new Error('Missing element or tracker for UUID: ' + uuid));
+      }
+
+      try {
+        this.debug && console.debug('A/B Tests', 'Tracking is about to start.');
+        const result = await tracker.track();
+        tracker.setStatus('success');
+        this.debug && console.debug('A/B Tests', 'Tracking was successful.', result);
+        return result;
+      }
+      catch (error) {
+        tracker.onError(error);
+        this.debug && console.error('A/B Tests', 'Tracking failed:', error);
       }
     }
 

@@ -1,0 +1,7 @@
+name: 'AB Tests Example Analytics'
+type: module
+description: 'Example analytics provider for AB Tests module'
+package: 'AB Tests'
+core_version_requirement: ^10 || ^11
+dependencies:
+  - ab_tests:ab_tests

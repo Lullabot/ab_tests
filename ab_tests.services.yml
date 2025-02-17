@@ -6,3 +6,8 @@ services:
   Drupal\ab_tests\AbVariantDeciderPluginManager:
     autowire: true
     parent: default_plugin_manager
+  plugin.manager.ab_analytics:
+    class: Drupal\ab_tests\AbAnalyticsPluginManager
+    parent: default_plugin_manager
+  Drupal\ab_tests\AbAnalyticsPluginManager:
+    alias: plugin.manager.ab_analytics

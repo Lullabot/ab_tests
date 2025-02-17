@@ -1,17 +1,17 @@
 'use strict';
 
 /**
- * Implements a null-pattern A/B test decider.
+ * Implements a null-pattern A/B test tracker.
  */
-class NullDecider extends BaseDecider {
+class NullTracker extends BaseTracker {
 
   /**
-   * Refuses to decide.
+   * Refuses to track.
    *
    * @returns {Promise<Decision>}
    *   Resolves with the decision.
    */
-  decide() {
+  track() {
     return Promise.reject();
   }
 

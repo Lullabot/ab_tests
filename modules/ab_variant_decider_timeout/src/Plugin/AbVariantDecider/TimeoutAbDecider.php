@@ -5,6 +5,7 @@ namespace Drupal\ab_variant_decider_timeout\Plugin\AbVariantDecider;
 use Drupal\ab_tests\AbVariantDeciderPluginBase;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -18,6 +19,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 class TimeoutAbDecider extends AbVariantDeciderPluginBase {
+
+  use StringTranslationTrait;
 
   /**
    * Creates a new TimeoutAbDecider object.

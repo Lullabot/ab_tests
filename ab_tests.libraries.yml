@@ -1,7 +1,9 @@
 ab_tests:
   js:
     js/AbTests.js: {}
+    js/BaseAction.js: {}
     js/BaseDecider.js: {}
+    js/BaseTracker.js: {}
     js/Decision.js: {}
   dependencies:
     - core/drupal
@@ -14,3 +16,16 @@ ab_variant_decider.null:
     js/ab-variant-decider-null.js: {}
   dependencies:
     - ab_tests/ab_tests
+ab_analytics_tracker.null:
+  js:
+    js/NullTracker.js: {}
+    js/ab-analytics-tracker-null.js: {}
+  dependencies:
+    - ab_tests/ab_tests
+
+analytics:
+  js:
+    js/analytics.js: {}
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
