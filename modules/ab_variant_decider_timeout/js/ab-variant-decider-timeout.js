@@ -7,7 +7,7 @@
   Drupal.behaviors.abVariantDeciderTimeout = {
     attach(context, settings) {
       if (!Drupal.abTests) {
-        console.warn('Drupal.abTests singleton is not available. Skipping AB test processing.');
+        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
         return;
       }
 
@@ -17,13 +17,7 @@
         context,
       );
 
-      if (!elements.length) {
-        return;
-      }
-
       elements.forEach(element => {
-        Drupal.abTests.registerElement(element);
-
         const deciderSettings = settings.ab_tests?.deciderSettings;
         if (!deciderSettings) {
           return;
@@ -44,10 +38,9 @@
           maxTimeout: deciderSettings.timeout.max
         };
 
-        const decider = new TimeoutDecider(settings?.ab_tests?.debug || false, availableVariants, config);
-        const uuid = element.getAttribute('data-ab-tests-entity-root');
+        const decider = new TimeoutDecider(availableVariants, config);
 
-        Drupal.abTests.registerDecider(uuid, decider);
+        Drupal.abTests.registerDecider(element, decider);
       });
     },
   };

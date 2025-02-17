@@ -3,13 +3,11 @@
 /**
  * Implements a timeout-based A/B test decider.
  */
-class MockTracker extends BaseDecider {
+class MockTracker extends BaseTracker {
 
   /**
    * Constructs a new TimeoutDecider instance.
    *
-   * @param {boolean} debug
-   *   Indicates if debug mode is enabled.
    * @param {string} apiKey
    *   The tracking service apiKey.
    * @param {Object} config
@@ -17,24 +15,35 @@ class MockTracker extends BaseDecider {
    * @param {string} config.trackingDomain
    *   The tracking domain.
    */
-  constructor(debug, apiKey, config) {
-    super(debug);
+  constructor(apiKey, config) {
+    super();
     this.apiKey = apiKey;
     this.trackingDomain = config.trackingDomain;
   }
 
   /**
-   * Mocks tracking an event.
-   *
-   * @returns {Promise<Decision>}
-   *   Resolves with the decision.
+   * @inheritDoc
    */
-  track() {
+  track(decision, element) {
+    this.getDebug() && console.debug('A/B Tests', 'MockTracker: starting tracking:', decision, this.apiKey, this.trackingDomain);
     return new Promise((resolve) => {
+      // First simulate tracking the decision.
       setTimeout(() => {
-        console.log('MockTracker: Event tracked successfully', this.apiKey, this.trackingDomain);
+        console.log('A/B Tests', 'MockTracker: Event tracked successfully:', decision, this.apiKey, this.trackingDomain);
         resolve();
       }, 500);
+      // Then simulate tracking some UX events.
+      element.addEventListener('click', (event) => {
+        event.target.classList.add('clicked');
+        console.log(
+          'A/B Tests',
+          'MockTracker: Event clicked:',
+          element,
+          decision,
+          this.apiKey,
+          this.trackingDomain,
+        );
+      })
     });
   }
 }

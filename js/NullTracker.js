@@ -6,13 +6,10 @@
 class NullTracker extends BaseTracker {
 
   /**
-   * Refuses to track.
-   *
-   * @returns {Promise<Decision>}
-   *   Resolves with the decision.
+   * @inheritDoc
    */
-  track() {
-    return Promise.reject();
+  track(decision, element) {
+    return Promise.reject({ decision, element });
   }
 
 }

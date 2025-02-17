@@ -4,6 +4,7 @@
  * Represents an A/B test decision.
  */
 class Decision {
+
   /**
    * Constructs a new Decision instance.
    *
@@ -19,4 +20,5 @@ class Decision {
     this.displayMode = displayMode;
     this.decisionData = decisionData;
   }
+
 }

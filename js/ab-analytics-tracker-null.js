@@ -13,21 +13,12 @@
 
       const elements = once(
         'ab-variant-decider-null',
-        '[data-ab-tests-entity-root]',
+        '[data-ab-tests-decision]',
         context,
       );
 
-      if (!elements.length) {
-        return;
-      }
-
       elements.forEach(element => {
-        Drupal.abTests.registerElement(element);
-
-        const decider = new NullDecider();
-        const uuid = element.getAttribute('data-ab-tests-entity-root');
-
-        Drupal.abTests.registerDecider(uuid, decider);
+        Drupal.abTests.registerTracker(element, new NullDecider());
       });
     },
   };

@@ -6,12 +6,9 @@
 class NullDecider extends BaseDecider {
 
   /**
-   * Refuses to decide.
-   *
-   * @returns {Promise<Decision>}
-   *   Resolves with the decision.
+   * @inheritDoc
    */
-  decide() {
+  decide(element) {
     return Promise.reject();
   }
 

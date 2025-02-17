@@ -2,17 +2,16 @@
 
 /**
  * Base class for A/B test actions.
+ *
+ * @abstract
  */
 class BaseAction {
 
   /**
-   * Constructs a new BaseTracker instance.
-   *
-   * @param {boolean} debug
-   *   Indicates if the debug mode is on.
+   * Constructs a new BaseAction instance.
    */
-  constructor(debug) {
-    this.debug = debug;
+  constructor() {
+    this.debug = false;
     // Initial status is 'idle'.
     this.status = 'idle';
     this.error = null;
@@ -49,6 +48,26 @@ class BaseAction {
   }
 
   /**
+   * Retrieves the current value of the debug flag.
+   *
+   * @return {boolean}
+   *   The current debug status.
+   */
+  getDebug() {
+    return this.debug;
+  }
+
+  /**
+   * Sets the debug flag.
+   *
+   * @param {boolean} value
+   *   The value.
+   */
+  setDebug(value) {
+    this.debug = value;
+  }
+
+  /**
    * Handles errors encountered while deciding the variant.
    *
    * @param {Object} error
@@ -57,7 +76,7 @@ class BaseAction {
   onError(error) {
     this.setStatus('error');
     this.error = error;
-    this.debug && console.error('A/B Tests', 'There was an error during the A/B test.', error);
+    this._debug && console.error('A/B Tests', 'There was an error during the A/B test.', error);
   }
 
 }

@@ -1,19 +1,18 @@
-((Drupal, drupalSettings) => {
+((document, Drupal, drupalSettings) => {
   'use strict';
 
   /**
    * Manages A/B test decisions and variant switching.
    */
   class AbTests {
+
+    eventName = 'abTestFinished';
+
     constructor() {
       if (AbTests.instance) {
         return AbTests.instance;
       }
 
-      this.decisions = new Map();
-      this.elements = new Map();
-      this.deciders = new Map();
-      this.trackers = new Map();
       this.debug = drupalSettings?.ab_tests?.debug || false;
       AbTests.instance = this;
     }
@@ -27,81 +26,76 @@
      *   The singleton instance.
      */
     registerElement(element) {
-      const uuid = element.getAttribute('data-ab-tests-entity-root');
-      if (!uuid) {
-        this.debug && console.warn('A/B Tests', 'Element missing data-ab-tests-entity-root attribute:', element);
-        return this;
-      }
-      // Only register elements once.
-      if (this.elements.get(uuid)) {
-        return this;
-      }
-      this.elements.set(uuid, element);
+      element.setAttribute('data-ab-tests-decider-status', 'idle');
 
       // Hide the default variant and show skeleton.
       this._showSkeleton(element);
-
-      return this;
     }
 
     /**
      * Registers a decider for a specific test.
      *
-     * @param {string} uuid
-     *   The UUID of the A/B test.
+     * @param {HTMLElement} element
+     *   The element.
      * @param {BaseDecider} decider
      *   The decider instance that implements decide().
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    registerDecider(uuid, decider) {
-      decider.setStatus('pending');
-      this.deciders.set(uuid, decider);
+    registerDecider(element, decider) {
+      const status = 'pending';
+      decider.setStatus(status);
+      decider.setDebug(this.debug);
+      element.setAttribute('data-ab-tests-decider-status', status);
 
       // Start the decision process.
-      return this._makeDecision(uuid);
+      return this._makeDecision(element, decider);
     }
 
     /**
      * Registers a tracker for a specific test.
      *
-     * @param {string} uuid
-     *   The UUID of the A/B test.
+     * @param {HTMLElement} element
+     *   The element of the A/B test.
      * @param {BaseTracker} tracker
      *   The tracker instance that implements track().
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    registerTracker(uuid, tracker) {
-      tracker.setStatus('pending');
-      this.trackers.set(uuid, tracker);
-
+    registerTracker(element, tracker) {
+      const status = 'pending';
+      tracker.setStatus(status);
+      tracker.setDebug(this.debug);
+      element.setAttribute('data-ab-tests-tracker-status', status);
       // Start the tracking process.
-      return this._doTrack(uuid);
+      const eventInfo = {
+        tracker,
+        decision: element.getAttribute('data-ab-tests-decision'),
+      };
+      return this._doTrack(element, eventInfo);
     }
 
     /**
      * Internal method to make a decision using the registered decider.
      *
-     * @param {string} uuid
-     *   The UUID of the A/B test.
+     * @param {HTMLElement} element
+     *   The DOM element.
+     * @param {BaseDecider} decider
+     *   The decider.
+     *
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    async _makeDecision(uuid) {
-      const element = this.elements.get(uuid);
-      const decider = this.deciders.get(uuid);
-
-      if (!element || !decider) {
-        return Promise.reject(new Error('Missing element or decider for UUID: ' + uuid));
-      }
-
+    async _makeDecision(element, decider) {
       try {
         this.debug && console.debug('A/B Tests', 'A decision is about to be made.');
-        const decision = await decider.decide();
-        decider.setStatus('success');
+        const decision = await decider.decide(element);
+        const status = 'success';
+        decider.setStatus(status);
+        // Set a data attribute to indicate the test is in progress.
+        element.setAttribute('data-ab-tests-decision-status', status);
         this.debug && console.debug('A/B Tests', 'A decision was reached.', decision);
-        await this._handleDecision(uuid, decision);
+        await this._handleDecision(element, decision);
         return decision;
       }
       catch (error) {
@@ -115,23 +109,24 @@
     /**
      * Internal method to track a test result using the registered tracker.
      *
-     * @param {string} uuid
-     *   The UUID of the A/B test.
+     * @param {HTMLElement} element
+     *   The element.
+     * @param {Object} eventInfo
+     *   The event info object.
+     * @param {BaseTracker} eventInfo.tracker
+     *   The tracker instance that implements track().
+     * @param {Decision} eventInfo.decision
+     *   The decision object.
      * @returns {Promise<Decision>}
      *   Resolves with the tracking made.
      */
-    async _doTrack(uuid) {
-      const element = this.elements.get(uuid);
-      const tracker = this.trackers.get(uuid);
-
-      if (!element || !tracker) {
-        return Promise.reject(new Error('Missing element or tracker for UUID: ' + uuid));
-      }
-
+    async _doTrack(element, { tracker, decision }) {
       try {
         this.debug && console.debug('A/B Tests', 'Tracking is about to start.');
-        const result = await tracker.track();
-        tracker.setStatus('success');
+        const result = await tracker.track(decision, element);
+        const status = 'success';
+        tracker.setStatus(status);
+        element.setAttribute('data-ab-tests-tracking-status', status);
         this.debug && console.debug('A/B Tests', 'Tracking was successful.', result);
         return result;
       }
@@ -144,16 +139,14 @@
     /**
      * Internal method to handle a decision once made.
      *
-     * @param {string} uuid
-     *   The UUID of the A/B test.
+     * @param {HTMLElement} element
+     *   The element.
      * @param {Decision} decision
      *   The decision object.
      */
-    async _handleDecision(uuid, decision) {
-      const element = this.elements.get(uuid);
-      this.decisions.set(uuid, decision);
-
-      // @todo Check the actual defautl from the content type settings.
+    async _handleDecision(element, decision) {
+      // @todo Check the actual default from the content type settings.
+      const uuid = element.getAttribute('data-ab-tests-entity-root');
       if (decision.displayMode === 'default') {
         this.debug && console.debug('A/B Tests', 'Un-hiding the default variant.');
         this._showDefaultVariant(element);
@@ -166,11 +159,10 @@
       }
 
       // Dispatch decision event.
-      const event = new CustomEvent('abTestFinished', {
+      const event = new CustomEvent(this.eventName, {
         detail: {
           uuid,
           decision,
-          element
         },
         bubbles: true
       });
@@ -228,4 +220,22 @@
 
   // Make the singleton instance available globally.
   Drupal.abTests = new AbTests();
-})(Drupal, drupalSettings);
+
+  Drupal.behaviors.abTests = {
+    attach: function (context, settings) {
+      if (!Drupal.abTests) {
+        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
+        return;
+      }
+
+      const elements = once(
+        'ab-tests-element',
+        '[data-ab-tests-entity-root]',
+        context,
+      );
+
+      elements.forEach(Drupal.abTests.registerElement.bind(Drupal.abTests));
+    },
+  };
+
+})(document, Drupal, drupalSettings);
