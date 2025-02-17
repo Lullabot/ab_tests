@@ -24,12 +24,12 @@ class MockTracker extends BaseDecider {
   }
 
   /**
-   * Makes a decision after a random timeout.
+   * Mocks tracking an event.
    *
    * @returns {Promise<Decision>}
    *   Resolves with the decision.
    */
-  decide() {
+  track() {
     return new Promise((resolve) => {
       setTimeout(() => {
         console.log('MockTracker: Event tracked successfully', this.apiKey, this.trackingDomain);

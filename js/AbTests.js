@@ -124,7 +124,7 @@
       const element = this.elements.get(uuid);
       const tracker = this.trackers.get(uuid);
 
-      if (!element || !decider) {
+      if (!element || !tracker) {
         return Promise.reject(new Error('Missing element or tracker for UUID: ' + uuid));
       }
 

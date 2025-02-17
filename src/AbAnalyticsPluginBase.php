@@ -82,7 +82,7 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
         'library' => [$this->pluginDefinition['analytics_library'] ?? 'ab_tests/ab_variant_decider.null'],
         'drupalSettings' => [
           'ab_tests' => [
-            'analyticsSettings' => $this->getConfiguration(),
+            'analyticsSettings' => $this->getJavaScriptSettings(),
           ],
         ],
       ],
@@ -95,7 +95,7 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
    *   Settings to be passed to JavaScript.
    */
   protected function getJavaScriptSettings(): array {
-    return [];
+    return $this->getConfiguration();
   }
 
 }

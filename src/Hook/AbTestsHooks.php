@@ -128,7 +128,23 @@ class AbTestsHooks {
         '#attached' => ['library' => ['ab_tests/ab_variant_decider.null']],
       ];
     }
+    // Attach the library from the analytics tracker.
+    $analytics_tracker_id = $settings['analytics']['tracker'] ?? 'null';
+    try {
+      $analytics_tracker = $this->analyticsManager->createInstance(
+        $analytics_tracker_id,
+        $settings['analytics'][$analytics_tracker_id] ?? [],
+      );
+      assert($analytics_tracker instanceof AbAnalyticsInterface);
+      $tracker_build = $analytics_tracker->toRenderable();
+    }
+    catch (PluginException $e) {
+      $tracker_build = [
+        '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
+      ];
+    }
     $build['ab_tests_decider'] = $decider_build;
+    $build['ab_tests_tracker'] = $tracker_build;
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
   }

@@ -24,7 +24,7 @@
       elements.forEach(element => {
         Drupal.abTests.registerElement(element);
 
-        const trackerSettings = settings.ab_tests?.trackerSettings;
+        const trackerSettings = settings.ab_tests?.analyticsSettings;
         if (!trackerSettings) {
           return;
         }
