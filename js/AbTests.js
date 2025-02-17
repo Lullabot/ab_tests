@@ -62,10 +62,16 @@
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    registerTracker(element, tracker) {
-      const status = 'pending';
+    async registerTracker(element, tracker) {
+      let status = 'initializing';
       tracker.setStatus(status);
       tracker.setDebug(this.debug);
+      this.debug && console.debug('A/B Tests', 'Initializing tracker.');
+      element.setAttribute('data-ab-tests-tracker-status', status);
+      await tracker.initialize();
+      this.debug && console.debug('A/B Tests', 'Tracker initialized.');
+      status = 'pending';
+      tracker.setStatus(status);
       element.setAttribute('data-ab-tests-tracker-status', status);
       // Start the tracking process.
       const eventInfo = {

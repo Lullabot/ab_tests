@@ -5,21 +5,18 @@
    * Behavior to initialize timeout decider.
    */
   Drupal.behaviors.abVariantDeciderNull = {
-    attach(context, settings) {
+    async attach(context, settings) {
       if (!Drupal.abTests) {
         console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
         return;
       }
 
-      const elements = once(
-        'ab-variant-decider-null',
-        '[data-ab-tests-decision]',
-        context,
-      );
-
-      elements.forEach(element => {
-        Drupal.abTests.registerTracker(element, new NullDecider());
-      });
+      if (
+        context instanceof Document ||
+        !context.hasAttribute('data-ab-tests-decision')) {
+        return;
+      }
+      await Drupal.abTests.registerTracker(context, new NullTracker());
     },
   };
 

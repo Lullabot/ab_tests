@@ -5,7 +5,7 @@
    * Behavior to initialize timeout tracker.
    */
   Drupal.behaviors.abVariantTrackerTimeout = {
-    attach(context, settings) {
+    async attach(context, settings) {
       if (!Drupal.abTests) {
         console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
         return;
@@ -20,7 +20,7 @@
       const apiKey = trackerSettings?.apiKey || '';
       const config = { trackingDomain: trackerSettings?.trackingDomain || '' };
       const tracker = new MockTracker(apiKey, config);
-      Drupal.abTests.registerTracker(context, tracker);
+      await Drupal.abTests.registerTracker(context, tracker);
     },
   };
 
