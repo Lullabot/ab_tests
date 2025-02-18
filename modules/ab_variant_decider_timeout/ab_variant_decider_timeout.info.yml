@@ -4,4 +4,4 @@ package: A/B Testing
 core_version_requirement: ^10 || ^11
 type: module
 dependencies:
-  - ab_tests
+  - ab_tests:ab_tests
