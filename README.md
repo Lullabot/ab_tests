@@ -48,7 +48,7 @@ A well-designed decider should have:
 
 ## Creating a Custom Tracker
 
-To create a custom tracker, implement `\Drupal\ab_tests\Plugin\AbTestTracker\AbTestTrackerInterface`. See the `ab_tests_example_analytics` module for a comprehensive example:
+To create a custom tracker, implement `\Drupal\ab_tests\Plugin\AbTestTracker\AbTestTrackerInterface`. See the `ab_analytics_tracker_example` module for a comprehensive example:
 
 1. Create a new plugin class in `src/Plugin/AbTestTracker`
 2. Add the plugin annotation

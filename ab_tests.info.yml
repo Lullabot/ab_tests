@@ -1,5 +1,5 @@
 name: 'A/B Tests'
 type: module
+package: A/B Testing
 description: 'Provides functionality for A/B testing.'
 core_version_requirement: ^10 || ^11
-package: A/B Testing

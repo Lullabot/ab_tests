@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\ab_tests_example_analytics\Plugin\AbAnalytics;
+namespace Drupal\ab_analytics_tracker_example\Plugin\AbAnalytics;
 
 use Drupal\ab_tests\AbAnalyticsPluginBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -12,7 +12,7 @@ use Drupal\Core\Form\FormStateInterface;
  *   id = "mock_tracker",
  *   label = @Translation("Mock Tracker"),
  *   description = @Translation("Example analytics provider for testing"),
- *   analytics_library = "ab_tests_example_analytics/ab_analytics_tracker.mock"
+ *   analytics_library = "ab_analytics_tracker_example/ab_analytics_tracker.mock"
  * )
  */
 class MockTracker extends AbAnalyticsPluginBase {
