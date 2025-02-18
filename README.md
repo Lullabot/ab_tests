@@ -1,6 +1,6 @@
 # A/B Tests
 
-A flexible and extensible Drupal module for running A/B tests on your content. This module empowers content teams to experiment with different content presentations while collecting valuable user interaction data.
+A flexible and extensible Drupal module for running A/B tests on your content types. This module empowers content teams to experiment with different content presentations while collecting valuable user interaction data.
 
 ## What Does It Do?
 
