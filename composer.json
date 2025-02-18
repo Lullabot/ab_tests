@@ -1,0 +1,9 @@
+{
+  "name": "lullabot/ab_tests",
+  "description": "A/B Tests Drupal module",
+  "type": "drupal-module",
+  "license": "proprietary",
+  "require": {
+    "drupal/core": "^10 || ^11"
+  }
+}
