@@ -9,6 +9,7 @@ use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\ab_tests\EntityHelper;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\EntityFormInterface;
@@ -124,6 +125,10 @@ class AbTestsHooks {
         ];
       }
       $build['ab_tests_tracker'] = $tracker_build;
+      $build['#attached'] = NestedArray::mergeDeep($build['#attached'], $tracker_build['#attached']);
+      $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+      $build['ab_tests_tracker'] = $tracker_build;
+      unset($build['ab_tests_tracker']['#attached']);
       return;
     }
     if (!$this->isFullPageEntity($entity)) {
@@ -144,9 +149,13 @@ class AbTestsHooks {
         '#attached' => ['library' => ['ab_tests/ab_variant_decider.null']],
       ];
     }
-    $build['ab_tests_decider'] = $decider_build;
-    $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
+    // Deal with a core bug that won't bubble up attachments correctly.
+    $build['#attached'] = NestedArray::mergeDeep($build['#attached'], $decider_build['#attached']);
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+    $build['ab_tests_decider'] = $decider_build;
+    unset($build['ab_tests_decider']['#attached']);
+
+    $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
   }
 
   /**
