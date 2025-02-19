@@ -35,11 +35,21 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
         'library' => [$this->pluginDefinition['decider_library'] ?? 'ab_tests/ab_variant_decider.null'],
         'drupalSettings' => [
           'ab_tests' => [
-            'deciderSettings' => $this->getConfiguration(),
+            'deciderSettings' => $this->getJavaScriptSettings(),
           ],
         ],
       ],
     ];
+  }
+
+  /**
+   * Gets the JavaScript settings for this analytics provider.
+   *
+   * @return array
+   *   Settings to be passed to JavaScript.
+   */
+  protected function getJavaScriptSettings(): array {
+    return $this->getConfiguration();
   }
 
   /**

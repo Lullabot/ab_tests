@@ -88,6 +88,7 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
       ],
     ];
   }
+
   /**
    * Gets the JavaScript settings for this analytics provider.
    *
