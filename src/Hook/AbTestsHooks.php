@@ -125,7 +125,7 @@ class AbTestsHooks {
         ];
       }
       $build['ab_tests_tracker'] = $tracker_build;
-      $build['#attached'] = NestedArray::mergeDeep($build['#attached'], $tracker_build['#attached']);
+      $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
       $build['ab_tests_tracker'] = $tracker_build;
       unset($build['ab_tests_tracker']['#attached']);
@@ -150,7 +150,7 @@ class AbTestsHooks {
       ];
     }
     // Deal with a core bug that won't bubble up attachments correctly.
-    $build['#attached'] = NestedArray::mergeDeep($build['#attached'], $decider_build['#attached']);
+    $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
     $build['ab_tests_decider'] = $decider_build;
     unset($build['ab_tests_decider']['#attached']);
