@@ -240,8 +240,8 @@
  }
 
   // Make the singleton instance available globally.
-  const debug = settings?.ab_tests?.debug || false;
-  const defaultViewMode = settings?.ab_tests?.defaultViewMode || 'default';
+  const debug = drupalSettings?.ab_tests?.debug || false;
+  const defaultViewMode = drupalSettings?.ab_tests?.defaultViewMode || 'default';
   Drupal.abTests = new AbTests(debug, defaultViewMode);
 
   Drupal.behaviors.abTests = {
