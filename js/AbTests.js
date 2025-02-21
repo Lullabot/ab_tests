@@ -7,13 +7,29 @@
   class AbTests {
 
     eventName = 'abTestFinished';
+    debug = false;
+    defaultViewMode = 'default';
 
-    constructor() {
+    /**
+     * Creates AbTests objects.
+     *
+     * This uses a singleton pattern.
+     *
+     * @param {boolean} debug
+     *   TRUE if debug mode is enabled.
+     * @param {string} defaultViewMode
+     *   The default view mode.
+     *
+     * @returns {AbTests}
+     *   The singleton instance.
+     */
+    constructor(debug, defaultViewMode) {
       if (AbTests.instance) {
         return AbTests.instance;
       }
 
-      this.debug = drupalSettings?.ab_tests?.debug || false;
+      this.defaultViewMode = defaultViewMode;
+      this.debug = debug;
       AbTests.instance = this;
     }
 
@@ -151,9 +167,8 @@
      *   The decision object.
      */
     async _handleDecision(element, decision) {
-      // @todo Check the actual default from the content type settings.
       const uuid = element.getAttribute('data-ab-tests-entity-root');
-      if (decision.displayMode === 'default') {
+      if (decision.displayMode === this.defaultViewMode) {
         this.debug && console.debug('A/B Tests', 'Un-hiding the default variant.');
         this._showDefaultVariant(element);
         this.debug && console.debug('A/B Tests', 'Default variant un-hidden.');
@@ -225,7 +240,9 @@
  }
 
   // Make the singleton instance available globally.
-  Drupal.abTests = new AbTests();
+  const debug = settings?.ab_tests?.debug || false;
+  const defaultViewMode = settings?.ab_tests?.defaultViewMode || 'default';
+  Drupal.abTests = new AbTests(debug, defaultViewMode);
 
   Drupal.behaviors.abTests = {
     attach: function (context, settings) {
