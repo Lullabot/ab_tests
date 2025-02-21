@@ -122,4 +122,18 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
     }
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  protected function getJavaScriptSettings(): array {
+    $configuration = $this->getConfiguration();
+    $available_variants = array_values(
+      array_filter($configuration['available_variants'] ?? [])
+    );
+    return [
+      'availableVariants' => $available_variants,
+      'timeout' => $configuration['timeout'] ?? [],
+    ];
+  }
+
 }

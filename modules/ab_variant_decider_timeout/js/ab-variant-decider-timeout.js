@@ -24,10 +24,7 @@
         }
 
         // Extract enabled variants from settings.
-        const availableVariants = Object
-          .entries(deciderSettings?.available_variants || [])
-          .filter(([k, v]) => v)
-          .map(([k]) => k);
+        const availableVariants = deciderSettings?.availableVariants || [];
 
         if (!availableVariants.length) {
           return;
