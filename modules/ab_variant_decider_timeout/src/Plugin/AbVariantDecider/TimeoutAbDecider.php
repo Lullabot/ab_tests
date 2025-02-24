@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\ab_variant_decider_timeout\Plugin\AbVariantDecider;
 
 use Drupal\ab_tests\AbVariantDeciderPluginBase;
