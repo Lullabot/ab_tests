@@ -33,7 +33,7 @@ class TimeoutDecider extends BaseDecider {
       const randomIndex = Math.floor(Math.random() * this.variants.length);
       const displayMode = this.variants[randomIndex];
       const decisionId = this.generateDecisionId();
-      this.getDebug() && console.debug('A/B Tests', duration, displayMode, decisionId);
+      this.getDebug() && console.debug('[A/B Tests]', duration, displayMode, decisionId);
 
       setTimeout(() => {
         resolve(new Decision(

@@ -82,10 +82,10 @@
       let status = 'initializing';
       tracker.setStatus(status);
       tracker.setDebug(this.debug);
-      this.debug && console.debug('A/B Tests', 'Initializing tracker.');
+      this.debug && console.debug('[A/B Tests]', 'Initializing tracker.');
       element.setAttribute('data-ab-tests-tracker-status', status);
       await tracker.initialize();
-      this.debug && console.debug('A/B Tests', 'Tracker initialized.');
+      this.debug && console.debug('[A/B Tests]', 'Tracker initialized.');
       status = 'pending';
       tracker.setStatus(status);
       element.setAttribute('data-ab-tests-tracker-status', status);
@@ -110,19 +110,19 @@
      */
     async _makeDecision(element, decider) {
       try {
-        this.debug && console.debug('A/B Tests', 'A decision is about to be made.');
+        this.debug && console.debug('[A/B Tests]', 'A decision is about to be made.');
         const decision = await decider.decide(element);
         const status = 'success';
         decider.setStatus(status);
         // Set a data attribute to indicate the test is in progress.
         element.setAttribute('data-ab-tests-decision-status', status);
-        this.debug && console.debug('A/B Tests', 'A decision was reached.', decision);
+        this.debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
         await this._handleDecision(element, decision);
         return decision;
       }
       catch (error) {
         decider.onError(error);
-        this.debug && console.error('A/B Tests', 'Decision failed:', error);
+        this.debug && console.error('[A/B Tests]', 'Decision failed:', error);
         // On error, show the default variant.
         this._showDefaultVariant(element);
       }
@@ -144,17 +144,17 @@
      */
     async _doTrack(element, { tracker, decision }) {
       try {
-        this.debug && console.debug('A/B Tests', 'Tracking is about to start.');
+        this.debug && console.debug('[A/B Tests]', 'Tracking is about to start.');
         const result = await tracker.track(decision, element);
         const status = 'success';
         tracker.setStatus(status);
         element.setAttribute('data-ab-tests-tracking-status', status);
-        this.debug && console.debug('A/B Tests', 'Tracking was successful.', result);
+        this.debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
         return result;
       }
       catch (error) {
         tracker.onError(error);
-        this.debug && console.error('A/B Tests', 'Tracking failed:', error);
+        this.debug && console.error('[A/B Tests]', 'Tracking failed:', error);
       }
     }
 
@@ -169,14 +169,14 @@
     async _handleDecision(element, decision) {
       const uuid = element.getAttribute('data-ab-tests-entity-root');
       if (decision.displayMode === this.defaultViewMode) {
-        this.debug && console.debug('A/B Tests', 'Un-hiding the default variant.');
+        this.debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
         this._showDefaultVariant(element);
-        this.debug && console.debug('A/B Tests', 'Default variant un-hidden.');
+        this.debug && console.debug('[A/B Tests]', 'Default variant un-hidden.');
       }
       else {
-        this.debug && console.debug('A/B Tests', 'Requesting node to be rendered via Ajax.', uuid, decision);
+        this.debug && console.debug('[A/B Tests]', 'Requesting node to be rendered via Ajax.', uuid, decision);
         await this._loadVariant(uuid, decision.displayMode);
-        this.debug && console.debug('A/B Tests', 'The entity was rendered with the new view mode.', uuid, decision);
+        this.debug && console.debug('[A/B Tests]', 'The entity was rendered with the new view mode.', uuid, decision);
       }
 
       // Dispatch decision event.
@@ -187,9 +187,9 @@
         },
         bubbles: true
       });
-      this.debug && console.debug('A/B Tests', 'Dispatching event after showing the content.', event);
+      this.debug && console.debug('[A/B Tests]', 'Dispatching event after showing the content.', event);
       element.dispatchEvent(event);
-      this.debug && console.debug('A/B Tests', 'Event dispatched.', event);
+      this.debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
     }
 
     /**
@@ -199,7 +199,7 @@
      *   The root element to skeletonize.
      */
     _showSkeleton(element) {
-      this.debug && console.debug('A/B Tests', 'Turining the default A/B Test view mode into the page skeleton');
+      this.debug && console.debug('[A/B Tests]', 'Turining the default A/B Test view mode into the page skeleton');
       element.classList.add('ab-test-loading');
     }
 
