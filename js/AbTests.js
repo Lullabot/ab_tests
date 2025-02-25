@@ -227,10 +227,7 @@
       return new Promise((resolve, reject) => {
         Drupal.ajax({
           url: `/ab-tests/render/${uuid}/${displayMode}`,
-          submit: {
-            uuid,
-            display_mode: displayMode
-          }
+          httpMethod: 'GET',
         }).execute()
           .then(resolve)
           .catch(reject);

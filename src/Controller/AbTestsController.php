@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Drupal\ab_tests\Controller;
 
 use Drupal\Component\Plugin\Exception\PluginException;
+use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\Core\Cache\CacheableAjaxResponse;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Render\RenderContext;
+use Drupal\Core\Render\RendererInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\Ajax\ReplaceCommand;
-use Drupal\Core\Ajax\AjaxResponse;
-use Drupal\Core\Entity\EntityInterface;
 
 /**
  * Controller for rendering A/B test variants.
  */
-class AbTestsController extends ControllerBase {
+final class AbTestsController extends ControllerBase {
 
   /**
    * Constructs an AbTestsController object.
@@ -46,12 +47,13 @@ class AbTestsController extends ControllerBase {
    * @param string $display_mode
    *   The display mode to use.
    *
-   * @return \Symfony\Component\HttpFoundation\JsonResponse
-   *   The AJAX response containing the rendered entity.
+   * @return \Drupal\Core\Cache\CacheableAjaxResponse
+   *   The cacheable AJAX response containing the rendered entity.
    */
-  public function renderVariant(string $uuid, string $display_mode) {
-    // @todo Turn this into a cacheable Ajax response.
-    $response = new AjaxResponse();
+  public function renderVariant(string $uuid, string $display_mode): CacheableAjaxResponse {
+    // Use a cacheable AJAX response.
+    $response = new CacheableAjaxResponse();
+
     // Find the entity by UUID.
     try {
       $entities = $this->entityTypeManager()
@@ -73,10 +75,15 @@ class AbTestsController extends ControllerBase {
     $build['#attributes']['data-ab-tests-decision'] = $display_mode;
 
     // Render the entity.
-    $rendered = $this->renderer->renderRoot($build);
-    $response->setAttachments($build['#attached']);
+    $context = new RenderContext();
+    $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
+      return $this->renderer->render($build, TRUE);
+    });
+    while (!$context->isEmpty()) {
+      $response->addCacheableDependency($context->pop());
+    }
 
-    // Create and return an AjaxResponse with ReplaceCommand.
+    // Create and add the replace command.
     $response->addCommand(
       new ReplaceCommand(
         sprintf('[data-ab-tests-entity-root="%s"]', $uuid),
