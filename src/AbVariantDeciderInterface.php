@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+declare(strict_types=1);
+
 namespace Drupal\ab_tests;
 
 use Drupal\Core\Render\RenderableInterface;

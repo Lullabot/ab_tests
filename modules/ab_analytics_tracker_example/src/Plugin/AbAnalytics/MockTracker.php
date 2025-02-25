@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\ab_analytics_tracker_example\Plugin\AbAnalytics;
 
 use Drupal\ab_tests\AbAnalyticsPluginBase;

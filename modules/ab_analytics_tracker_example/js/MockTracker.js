@@ -25,11 +25,11 @@ class MockTracker extends BaseTracker {
    * @inheritDoc
    */
   track(decision, element) {
-    this.getDebug() && console.debug('A/B Tests', 'MockTracker: starting tracking:', decision, this.apiKey, this.trackingDomain);
+    this.getDebug() && console.debug('[A/B Tests]', 'MockTracker: starting tracking:', decision, this.apiKey, this.trackingDomain);
     return new Promise((resolve) => {
       // First simulate tracking the decision.
       setTimeout(() => {
-        console.log('A/B Tests', 'MockTracker: Event tracked successfully:', decision, this.apiKey, this.trackingDomain);
+        console.log('[A/B Tests]', 'MockTracker: Event tracked successfully:', decision, this.apiKey, this.trackingDomain);
         resolve();
       }, 500);
       // Then simulate tracking some UX events.

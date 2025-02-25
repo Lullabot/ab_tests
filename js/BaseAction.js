@@ -76,7 +76,7 @@ class BaseAction {
   onError(error) {
     this.setStatus('error');
     this.error = error;
-    this._debug && console.error('A/B Tests', 'There was an error during the A/B test.', error);
+    this._debug && console.error('[A/B Tests]', 'There was an error during the A/B test.', error);
   }
 
 }
