@@ -79,8 +79,12 @@ final class AbTestsController extends ControllerBase {
     $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
       return $this->renderer->render($build, TRUE);
     });
+    // Add the assets, libraries, settings, and cache information bubbled up
+    // during rendering.
     while (!$context->isEmpty()) {
-      $response->addCacheableDependency($context->pop());
+      $metadata = $context->pop();
+      $response->addAttachments($metadata->getAttachments());
+      $response->addCacheableDependency($metadata);
     }
 
     // Create and add the replace command.
