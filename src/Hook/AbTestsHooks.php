@@ -157,6 +157,8 @@ class AbTestsHooks {
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
     $build['#attached']['drupalSettings']['ab_tests']['defaultViewMode'] = $settings['default'] ?? 'default';
     $build['ab_tests_decider'] = $decider_build;
+    $classes = $build['#attributes']['class'] ?? [];
+    $build['#attributes']['class'] = [...$classes, 'ab-test-loading'];
     unset($build['ab_tests_decider']['#attached']);
 
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
