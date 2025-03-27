@@ -221,6 +221,11 @@ class AbTestsHooks {
       '#title' => $this->t('Debug'),
       '#description' => $this->t('If enabled, debug statements will be printed in the JS console.'),
       '#default_value' => (bool) ($settings['debug'] ?? FALSE),
+      '#states' => [
+        'visible' => [
+          ':input[name="ab_tests[is_active]"]' => ['checked' => TRUE],
+        ],
+      ],
     ];
 
     $form['ab_tests']['default'] = [
