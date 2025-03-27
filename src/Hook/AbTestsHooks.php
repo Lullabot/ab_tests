@@ -13,7 +13,6 @@ use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Config\ConfigFactoryInterface;
-use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\EntityFormInterface;
@@ -26,7 +25,6 @@ use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Drupal\Core\Url;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeTypeInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -58,6 +56,8 @@ class AbTestsHooks {
    *   The route match.
    * @param \Drupal\ab_tests\AbAnalyticsPluginManager $analyticsManager
    *   The analytics manager.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory.
    */
   public function __construct(
     private readonly EntityHelper $entityHelper,
@@ -65,7 +65,8 @@ class AbTestsHooks {
     private readonly RequestStack $requestStack,
     private readonly AbVariantDeciderPluginManager $variantDeciderManager,
     private readonly RouteMatchInterface $routeMatch,
-    private readonly AbAnalyticsPluginManager $analyticsManager, private readonly ConfigFactoryInterface $config,
+    private readonly AbAnalyticsPluginManager $analyticsManager,
+    private readonly ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -175,7 +176,8 @@ class AbTestsHooks {
    */
   #[Hook('hook_preprocess_node')]
   public function preprocessNode(&$variables): void {
-    $route_name = $this->requestStack->getCurrentRequest()->get(RouteObjectInterface::ROUTE_NAME);
+    $route_name = $this->requestStack->getCurrentRequest()
+      ->get(RouteObjectInterface::ROUTE_NAME);
     if ($route_name !== 'ab_tests.render_variant') {
       return;
     }
@@ -216,7 +218,7 @@ class AbTestsHooks {
     }
 
     // Add a message about the export config setting if it's enabled.
-    $config = \Drupal::config('ab_tests.settings');
+    $config = $this->configFactory->get('ab_tests.settings');
     $settings_link = Link::createFromRoute($this->t('A/B Tests settings'), 'ab_tests.settings');
     $message = $config->get('ignore_config_export')
       ? $this->t('Note: A/B Tests configuration is currently set to be <strong>ignored</strong> during configuration export. This setting can be changed in the @settings_link.', ['@settings_link' => $settings_link->toString()])
