@@ -32,6 +32,18 @@ Trackers manage the reporting of:
 - How users interact with each variant.
 - Custom events and metrics.
 
+## Configuration
+
+### Ignoring Configuration Export
+The module provides an option to ignore A/B test configurations during configuration export. This is useful when you want to:
+- Keep A/B test configurations out of version control
+- Have different A/B test settings per environment
+- Prevent A/B tests from being deployed/overritten across environments
+
+To enable this feature, navigate to /admin/config/search/ab-tests and check the box.
+
+When enabled, any third-party settings from the A/B Tests module will be excluded during configuration export and import.
+
 ## Creating a Custom Decider
 
 To create a custom decider, implement `\Drupal\ab_tests\Plugin\AbVariantDecider\AbVariantDeciderInterface`. The `ab_variant_decider_timeout` module provides a practical example:

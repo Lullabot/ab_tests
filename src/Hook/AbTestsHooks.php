@@ -12,6 +12,8 @@ use Drupal\ab_tests\EntityHelper;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\StorageInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\EntityFormInterface;
@@ -19,10 +21,12 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Form\SubformState;
 use Drupal\Core\Hook\Attribute\Hook;
+use Drupal\Core\Link;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\Url;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeTypeInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -61,7 +65,7 @@ class AbTestsHooks {
     private readonly RequestStack $requestStack,
     private readonly AbVariantDeciderPluginManager $variantDeciderManager,
     private readonly RouteMatchInterface $routeMatch,
-    private readonly AbAnalyticsPluginManager $analyticsManager,
+    private readonly AbAnalyticsPluginManager $analyticsManager, private readonly ConfigFactoryInterface $config,
   ) {}
 
   /**
@@ -210,6 +214,19 @@ class AbTestsHooks {
     if (isset($form['additional_settings']) && $form['additional_settings']['#type'] === 'vertical_tabs') {
       $form['ab_tests']['#group'] = 'additional_settings';
     }
+
+    // Add a message about the export config setting if it's enabled.
+    $config = \Drupal::config('ab_tests.settings');
+    $settings_link = Link::createFromRoute($this->t('A/B Tests settings'), 'ab_tests.settings');
+    $message = $config->get('ignore_config_export')
+      ? $this->t('Note: A/B Tests configuration is currently set to be <strong>ignored</strong> during configuration export. This setting can be changed in the @settings_link.', ['@settings_link' => $settings_link->toString()])
+      : $this->t('Note: A/B Tests configuration will be <strong>exported</strong> during configuration export. This setting can be changed in the @settings_link.', ['@settings_link' => $settings_link->toString()]);
+    $form['ab_tests']['export_notice'] = [
+      '#type' => 'markup',
+      '#markup' => '<div class="messages messages--status">' . $message . '</div>',
+      '#weight' => -10,
+    ];
+
     $form['ab_tests']['is_active'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enable A/B tests'),

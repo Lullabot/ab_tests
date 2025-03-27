@@ -5,3 +5,11 @@ ab_tests.render_variant:
     _controller: '\Drupal\ab_tests\Controller\AbTestsController::renderVariant'
   requirements:
     _permission: 'access content'
+
+ab_tests.settings:
+  path: '/admin/config/search/ab-tests'
+  defaults:
+    _form: '\Drupal\ab_tests\Form\AbTestsSettingsForm'
+    _title: 'A/B Tests Settings'
+  requirements:
+    _permission: 'administer site configuration'
