@@ -1,0 +1,6 @@
+ab_tests.settings:
+  title: 'A/B Tests'
+  description: 'Configure A/B Tests module settings.'
+  parent: system.admin_config_search
+  route_name: ab_tests.settings
+  weight: 0
