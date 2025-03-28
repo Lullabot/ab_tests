@@ -95,4 +95,25 @@ class AbTestsConfigFilter extends ConfigFilterBase implements ContainerFactoryPl
     return $data;
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function filterReadMultiple(array $names, array $data) {
+    $config = $this->configFactory->get('ab_tests.settings');
+    if (!$config->get('ignore_config_export')) {
+      return $data;
+    }
+
+    foreach ($names as $name) {
+      if (isset($data[$name]) && str_starts_with($name, 'node.type.')) {
+        $config = $this->configFactory->get($name);
+        $ab_tests_settings = $config->get('third_party_settings.ab_tests');
+        if (!empty($ab_tests_settings)) {
+          $data[$name]['third_party_settings']['ab_tests'] = $ab_tests_settings;
+        }
+      }
+    }
+    return $data;
+  }
+
 }
