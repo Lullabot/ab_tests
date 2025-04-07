@@ -75,16 +75,21 @@ final class AbTestsSettingsForm extends ConfigFormBase {
     ];
 
     if (!$config_filter_installed) {
-      $config_filter_url = Url::fromUri('https://www.drupal.org/project/config_filter', [
-        'attributes' => ['target' => '_blank'],
-      ]);
-      $config_filter_link = Link::fromTextAndUrl('Config Filter', $config_filter_url)->toString();
+      $config_filter_url = Url::fromUri(
+        'https://www.drupal.org/project/config_filter', [
+          'attributes' => ['target' => '_blank'],
+        ]
+      );
+      $config_filter_link = Link::fromTextAndUrl('Config Filter', $config_filter_url)
+        ->toString();
 
       $form['config_filter_notice'] = [
         '#type' => 'markup',
-        '#markup' => '<div class="messages messages--warning">' . $this->t('The @config_filter module is required to ignore A/B Tests settings in the configuration export. Install the module to enable this feature.', [
-          '@config_filter' => $config_filter_link,
-        ]) . '</div>',
+        '#markup' => '<div class="messages messages--warning">' . $this->t(
+            'The @config_filter module is required to ignore A/B Tests settings in the configuration export. Install the module to enable this feature.', [
+              '@config_filter' => $config_filter_link,
+            ]
+          ) . '</div>',
         '#weight' => -10,
       ];
     }

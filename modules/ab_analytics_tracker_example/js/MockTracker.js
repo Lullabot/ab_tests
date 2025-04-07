@@ -43,7 +43,7 @@ class MockTracker extends BaseTracker {
           this.apiKey,
           this.trackingDomain,
         );
-      })
+      });
     });
   }
 }

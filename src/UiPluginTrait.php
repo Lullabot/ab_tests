@@ -7,6 +7,9 @@ namespace Drupal\ab_tests;
 use Drupal\Component\Render\MarkupInterface;
 use Drupal\Core\Render\Markup;
 
+/**
+ * Trait for plugins that are presented in the UI.
+ */
 trait UiPluginTrait {
 
   /**

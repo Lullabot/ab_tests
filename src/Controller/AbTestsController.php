@@ -27,8 +27,7 @@ final class AbTestsController extends ControllerBase {
    */
   public function __construct(
     protected readonly RendererInterface $renderer,
-  ) {
-  }
+  ) {}
 
   /**
    * {@inheritdoc}

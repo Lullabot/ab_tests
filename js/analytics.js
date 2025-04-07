@@ -19,7 +19,7 @@
         }
         // Add other provider initializations here
       });
-    }
+    },
   };
 
 })(Drupal);

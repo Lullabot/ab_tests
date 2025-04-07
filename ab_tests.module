@@ -29,7 +29,8 @@ function ab_tests_help(string $route_name, RouteMatchInterface $route_match) {
  */
 #[LegacyHook]
 function ab_tests_form_node_type_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
-  return \Drupal::service(AbTestsHooks::class)->formNodeTypeFormAlter($form, $form_state, $form_id);
+  return \Drupal::service(AbTestsHooks::class)
+    ->formNodeTypeFormAlter($form, $form_state, $form_id);
 }
 
 /**
@@ -37,7 +38,8 @@ function ab_tests_form_node_type_form_alter(array &$form, FormStateInterface $fo
  */
 #[LegacyHook]
 function ab_tests_entity_view_alter(array &$build, EntityInterface $entity, EntityViewDisplayInterface $display) {
-  return \Drupal::service(AbTestsHooks::class)->entityViewAlter($build, $entity, $display);
+  return \Drupal::service(AbTestsHooks::class)
+    ->entityViewAlter($build, $entity, $display);
 }
 
 /**
@@ -45,7 +47,8 @@ function ab_tests_entity_view_alter(array &$build, EntityInterface $entity, Enti
  */
 #[LegacyHook]
 function ab_tests_entity_view_mode_alter(&$view_mode, EntityInterface $entity) {
-  return \Drupal::service(AbTestsHooks::class)->entityViewModeAlter($view_mode, $entity);
+  return \Drupal::service(AbTestsHooks::class)
+    ->entityViewModeAlter($view_mode, $entity);
 }
 
 /**

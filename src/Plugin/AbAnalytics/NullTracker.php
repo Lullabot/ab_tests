@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Drupal\ab_tests\Plugin\AbAnalytics;
 
 use Drupal\ab_tests\AbAnalyticsPluginBase;
-use Drupal\Core\Form\FormStateInterface;
 
 /**
  * MockTracker analytics provider.

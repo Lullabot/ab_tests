@@ -41,8 +41,8 @@ class TimeoutDecider extends BaseDecider {
           displayMode,
           {
             timeout: duration,
-            deciderId: 'timeout'
-          }
+            deciderId: 'timeout',
+          },
         ));
       }, duration);
     });

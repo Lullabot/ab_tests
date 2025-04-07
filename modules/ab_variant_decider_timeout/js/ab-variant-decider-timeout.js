@@ -32,7 +32,7 @@
 
         const config = {
           minTimeout: deciderSettings.timeout.min,
-          maxTimeout: deciderSettings.timeout.max
+          maxTimeout: deciderSettings.timeout.max,
         };
 
         const decider = new TimeoutDecider(availableVariants, config);

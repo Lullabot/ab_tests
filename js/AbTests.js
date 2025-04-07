@@ -119,8 +119,7 @@
         this.debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
         await this._handleDecision(element, decision);
         return decision;
-      }
-      catch (error) {
+      } catch (error) {
         decider.onError(error);
         this.debug && console.error('[A/B Tests]', 'Decision failed:', error);
         // On error, show the default variant.
@@ -151,8 +150,7 @@
         element.setAttribute('data-ab-tests-tracking-status', status);
         this.debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
         return result;
-      }
-      catch (error) {
+      } catch (error) {
         tracker.onError(error);
         this.debug && console.error('[A/B Tests]', 'Tracking failed:', error);
       }
@@ -172,8 +170,7 @@
         this.debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
         this._showDefaultVariant(element);
         this.debug && console.debug('[A/B Tests]', 'Default variant un-hidden.');
-      }
-      else {
+      } else {
         this.debug && console.debug('[A/B Tests]', 'Requesting node to be rendered via Ajax.', uuid, decision);
         await this._loadVariant(uuid, decision.displayMode);
         this.debug && console.debug('[A/B Tests]', 'The entity was rendered with the new view mode.', uuid, decision);
@@ -185,7 +182,7 @@
           uuid,
           decision,
         },
-        bubbles: true
+        bubbles: true,
       });
       this.debug && console.debug('[A/B Tests]', 'Dispatching event after showing the content.', event);
       element.dispatchEvent(event);
@@ -234,7 +231,7 @@
       });
     }
 
- }
+  }
 
   // Make the singleton instance available globally.
   const debug = drupalSettings?.ab_tests?.debug || false;
