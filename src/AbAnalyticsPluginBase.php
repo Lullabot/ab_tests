@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
-use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\PluginBase;
-use Drupal\Component\Plugin\DependentPluginInterface;
-use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Component\Plugin\ConfigurableInterface;
+use Drupal\Component\Plugin\DependentPluginInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Plugin\PluginBase;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -24,28 +24,6 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static($configuration, $plugin_id, $plugin_definition);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getConfiguration() {
-    $id_configuration = ['id' => $this->getPluginId()];
-    return $id_configuration + $this->configuration + $this->defaultConfiguration();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function setConfiguration(array $configuration) {
-    $this->configuration = $configuration + $this->defaultConfiguration();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function defaultConfiguration() {
-    return [];
   }
 
   /**
@@ -99,6 +77,28 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
    */
   protected function getJavaScriptSettings(): array {
     return $this->getConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConfiguration() {
+    $id_configuration = ['id' => $this->getPluginId()];
+    return $id_configuration + $this->configuration + $this->defaultConfiguration();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultConfiguration() {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function setConfiguration(array $configuration) {
+    $this->configuration = $configuration + $this->defaultConfiguration();
   }
 
 }

@@ -3,9 +3,12 @@ services:
     autowire: true
   Drupal\ab_tests\Hook\AbTestsHooks:
     autowire: true
-  Drupal\ab_tests\AbVariantDeciderPluginManager:
+  plugin.manager.ab_variant_decider:
+    class: Drupal\ab_tests\AbVariantDeciderPluginManager
     autowire: true
     parent: default_plugin_manager
+  Drupal\ab_tests\AbVariantDeciderPluginManager:
+    alias: plugin.manager.ab_variant_decider
   plugin.manager.ab_analytics:
     class: Drupal\ab_tests\AbAnalyticsPluginManager
     parent: default_plugin_manager

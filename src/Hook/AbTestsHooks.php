@@ -9,8 +9,8 @@ use Drupal\ab_tests\AbAnalyticsPluginManager;
 use Drupal\ab_tests\AbVariantDeciderInterface;
 use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\ab_tests\EntityHelper;
+use Drupal\ab_tests\Form\PluginSelectionFormTrait;
 use Drupal\Component\Plugin\Exception\PluginException;
-use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
@@ -18,10 +18,8 @@ use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Form\SubformState;
 use Drupal\Core\Hook\Attribute\Hook;
 use Drupal\Core\Link;
-use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -35,6 +33,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 class AbTestsHooks {
 
   use StringTranslationTrait;
+  use PluginSelectionFormTrait;
 
   /**
    * An array to store cached settings.
@@ -105,6 +104,56 @@ class AbTestsHooks {
   }
 
   /**
+   * Determines if the given entity is the full page entity for the request.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity to check.
+   *
+   * @return bool
+   *   TRUE if the entity is the full page entity for the current request,
+   *   FALSE otherwise.
+   */
+  private function isFullPageEntity(EntityInterface $entity): bool {
+    $request = $this->requestStack->getCurrentRequest();
+    $page_entity = $request
+      ->get($entity->getEntityTypeId());
+    if ($page_entity instanceof EntityInterface) {
+      return $page_entity->uuid() === $entity->uuid();
+    }
+    $uuid = $request->get('uuid');
+    return $uuid === $entity->uuid();
+  }
+
+  /**
+   * Retrieves A/B testing settings for the given entity.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity for which the settings are to be retrieved.
+   *
+   * @return array
+   *   An associative array containing A/B testing settings for the entity.
+   *   Returns a default 'is_active' => FALSE setting if A/B tests are not
+   *   enabled for the entity or if the entity does not match the current
+   *   request.
+   */
+  private function getSettings(EntityInterface $entity): array {
+    $cid = sprintf(
+      'ab-tests-settings#%s:%s',
+      $entity->getEntityTypeId(),
+      $entity->bundle(),
+    );
+    if (isset($this->cache[$cid])) {
+      return $this->cache[$cid];
+    }
+    // Only act when viewing the page for the current node.
+    // Return early if A/B tests are not enabled for this particular bundle.
+    $bundle_entity = $this->entityHelper->getBundle($entity);
+    $settings = $bundle_entity?->getThirdPartySetting('ab_tests', 'ab_tests', []) ?? [];
+    $this->cache[$cid] = $settings;
+    return $settings;
+  }
+
+  /**
    * Implements hook_entity_view_alter().
    */
   #[Hook('entity_view_alter')]
@@ -117,11 +166,11 @@ class AbTestsHooks {
     // Do not affect the Ajax re-render of the entity.
     if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
       // Attach the library from the analytics tracker.
-      $analytics_tracker_id = $settings['analytics']['tracker'] ?? 'null';
+      $analytics_tracker_id = $settings['analytics']['id'] ?? 'null';
       try {
         $analytics_tracker = $this->analyticsManager->createInstance(
           $analytics_tracker_id,
-          $settings['analytics'][$analytics_tracker_id] ?? [],
+          $settings['analytics']['settings'] ?? [],
         );
         assert($analytics_tracker instanceof AbAnalyticsInterface);
         $tracker_build = $analytics_tracker->toRenderable();
@@ -143,11 +192,11 @@ class AbTestsHooks {
       return;
     }
     // Attach the library from the variant resolver.
-    $variant_decider_id = $settings['variants']['decider'] ?? 'null';
+    $variant_decider_id = $settings['variants']['id'] ?? 'null';
     try {
       $variant_decider = $this->variantDeciderManager->createInstance(
         $variant_decider_id,
-        $settings['variants'][$variant_decider_id] ?? [],
+        $settings['variants']['settings'] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
       $decider_build = $variant_decider->toRenderable();
@@ -207,7 +256,7 @@ class AbTestsHooks {
     }
 
     $settings = $type->getThirdPartySettings('ab_tests')['ab_tests'] ?? [];
-    $form['#validate'][] = [$this, 'validateVariants'];
+    $form['#validate'][] = [$this, 'validatePlugins'];
     $form['ab_tests'] = [
       '#type' => 'details',
       '#title' => $this->t('A/B Tests'),
@@ -274,116 +323,18 @@ class AbTestsHooks {
       '#default_value' => $settings['default']['display_mode'] ?? 'default',
     ];
 
-    $form['ab_tests']['variants'] = [
-      '#type' => 'fieldset',
-      '#title' => $this->t('Variants'),
-      '#description' => $this->t('Configure the variants of the A/B tests. A variant decider is responsible for deciding which variant to load. This may be a random variant, using a provider like LaunchDarkly, etc.'),
-      '#description_display' => 'before',
-      '#states' => [
-        'visible' => [
-          ':input[name="ab_tests[is_active]"]' => ['checked' => TRUE],
-        ],
-      ],
-    ];
-    // List all plugin variants.
-    $deciders = $this->variantDeciderManager->getDeciders(
-      settings: $settings['variants'] ?? []
-    );
-    $form['ab_tests']['variants']['decider'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Variant Decider'),
-      '#options' => array_combine(
-        array_map(static fn(PluginInspectionInterface $decider) => $decider->getPluginId(), $deciders),
-        array_map(static fn(AbVariantDeciderInterface $decider) => $decider->label(), $deciders),
-      ),
-      '#default_value' => $settings['variants']['decider'] ?? 'null',
-      '#required' => TRUE,
-    ];
-    $form = array_reduce(
-      $deciders,
-      function (array $form_array, AbVariantDeciderInterface $decider) use ($form_state) {
-        assert($decider instanceof PluginFormInterface);
-        assert($decider instanceof PluginInspectionInterface);
-        $form_array['ab_tests']['variants'][$decider->getPluginId()] = [
-          '#type' => 'fieldset',
-          '#title' => $decider->label(),
-          '#description' => $decider->description(),
-          '#description_display' => 'before',
-          '#states' => [
-            'visible' => [
-              ':input[name="ab_tests[variants][decider]"]' => ['value' => $decider->getPluginId()],
-            ],
-          ],
-        ];
-        $subform_state = SubformState::createForSubform(
-          $form_array,
-          $form_array,
-          $form_state
-        );
-        $settings_form = $decider->buildConfigurationForm($form_array, $subform_state);
-        if (empty($settings_form)) {
-          $settings_form = ['#markup' => $this->t('<p>- No configuration options for this decider -</p>')];
-        }
-        $form_array['ab_tests']['variants'][$decider->getPluginId()] += $settings_form;
-        return $form_array;
-      },
+    // Use enhanced trait methods to inject plugin selectors with AJAX support.
+    $this->injectPluginSelector(
       $form,
+      $form_state,
+      $settings['variants'] ?? [],
+      'variants',
     );
-
-    $form['ab_tests']['analytics'] = [
-      '#type' => 'fieldset',
-      '#title' => $this->t('Analytics'),
-      '#description' => $this->t('Configure the trackers for the A/B tests. An analytics tracker is responsible for recording success / failure for the A/B test. This may send data to Google Analytics, etc.'),
-      '#description_display' => 'before',
-      '#states' => [
-        'visible' => [
-          ':input[name="ab_tests[is_active]"]' => ['checked' => TRUE],
-        ],
-      ],
-    ];
-    // List all analytics plugins.
-    $analytics = $this->analyticsManager->getAnalytics(
-      settings: $settings['analytics'] ?? []
-    );
-    $form['ab_tests']['analytics']['tracker'] = [
-      '#type' => 'radios',
-      '#title' => $this->t('Analytics Tracker'),
-      '#options' => array_combine(
-        array_map(static fn(PluginInspectionInterface $analytics) => $analytics->getPluginId(), $analytics),
-        array_map(static fn(AbAnalyticsInterface $analytics) => $analytics->label(), $analytics),
-      ),
-      '#default_value' => $settings['analytics']['tracker'] ?? 'null',
-      '#required' => TRUE,
-    ];
-    $form = array_reduce(
-      $analytics,
-      function (array $form_array, AbAnalyticsInterface $analytics) use ($form_state) {
-        assert($analytics instanceof PluginFormInterface);
-        assert($analytics instanceof PluginInspectionInterface);
-        $form_array['ab_tests']['analytics'][$analytics->getPluginId()] = [
-          '#type' => 'fieldset',
-          '#title' => $analytics->label(),
-          '#description' => $analytics->description(),
-          '#description_display' => 'before',
-          '#states' => [
-            'visible' => [
-              ':input[name="ab_tests[analytics][tracker]"]' => ['value' => $analytics->getPluginId()],
-            ],
-          ],
-        ];
-        $subform_state = SubformState::createForSubform(
-          $form_array,
-          $form_array,
-          $form_state
-        );
-        $settings_form = $analytics->buildConfigurationForm($form_array, $subform_state);
-        if (empty($settings_form)) {
-          $settings_form = ['#markup' => $this->t('<p>- No configuration options for this analytics plugin -</p>')];
-        }
-        $form_array['ab_tests']['analytics'][$analytics->getPluginId()] += $settings_form;
-        return $form_array;
-      },
+    $this->injectPluginSelector(
       $form,
+      $form_state,
+      $settings['analytics'] ?? [],
+      'analytics',
     );
 
     $form['#entity_builders'][] = [$this, 'entityBuilder'];
@@ -402,89 +353,40 @@ class AbTestsHooks {
    *   The form state object that contains the submitted form values.
    */
   public function entityBuilder(string $entity_type, NodeTypeInterface $type, array &$form, FormStateInterface $form_state): void {
+    $settings = $form_state->getValue('ab_tests');
+    unset($settings['variants'], $settings['analytics']);
+    $settings = array_reduce(
+      ['variants', 'analytics'],
+      fn(array $settings, string $plugin_type_id) => $settings + $this->updatePluginConfiguration(
+          $form,
+          $form_state,
+          $plugin_type_id,
+        ),
+      $settings,
+    );
+
+    // Save the updated settings to the entity.
     $type->setThirdPartySetting(
       module: 'ab_tests',
       key: 'ab_tests',
-      value: $form_state->getValue('ab_tests'),
+      value: $settings,
     );
-    $decider_id = $form_state->getValue(['ab_tests', 'variants', 'decider']);
-    try {
-      $decider = $this->variantDeciderManager->createInstance($decider_id);
-      assert($decider instanceof PluginFormInterface);
-      $subform_state = SubformState::createForSubform($form['ab_tests']['variants'][$decider_id], $form, $form_state);
-      $decider->submitConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
-    }
-    catch (PluginException $e) {
-    }
   }
 
   /**
-   * Validates the configuration form for the deciders.
+   * Validates plugin forms for both variant decider and analytics tracker.
    */
-  public function validateVariants(array &$form, FormStateInterface $form_state): void {
-    $decider_id = $form_state->getValue(['ab_tests', 'variants', 'decider']);
-    try {
-      $decider = $this->variantDeciderManager->createInstance($decider_id);
-      assert($decider instanceof PluginFormInterface);
-      $subform_state = SubformState::createForSubform(
-        $form['ab_tests']['variants'][$decider_id],
-        $form,
-        $form_state,
-      );
-      $decider->validateConfigurationForm($form['ab_tests']['variants'][$decider_id], $subform_state);
+  public function validatePlugins(array &$form, FormStateInterface $form_state): void {
+    // Skip validation if A/B tests are not active.
+    if (!$form_state->getValue(['ab_tests', 'is_active'])) {
+      return;
     }
-    catch (PluginException $e) {
-    }
-  }
 
-  /**
-   * Retrieves A/B testing settings for the given entity.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity for which the settings are to be retrieved.
-   *
-   * @return array
-   *   An associative array containing A/B testing settings for the entity.
-   *   Returns a default 'is_active' => FALSE setting if A/B tests are not
-   *   enabled for the entity or if the entity does not match the current
-   *   request.
-   */
-  private function getSettings(EntityInterface $entity): array {
-    $cid = sprintf(
-      'ab-tests-settings#%s:%s',
-      $entity->getEntityTypeId(),
-      $entity->bundle(),
-    );
-    if (isset($this->cache[$cid])) {
-      return $this->cache[$cid];
-    }
-    // Only act when viewing the page for the current node.
-    // Return early if A/B tests are not enabled for this particular bundle.
-    $bundle_entity = $this->entityHelper->getBundle($entity);
-    $settings = $bundle_entity?->getThirdPartySetting('ab_tests', 'ab_tests', []) ?? [];
-    $this->cache[$cid] = $settings;
-    return $settings;
-  }
+    // Validate the variant decider plugin form.
+    $this->validatePluginForm($form, $form_state, 'variants', 'decider');
 
-  /**
-   * Determines if the given entity is the full page entity for the request.
-   *
-   * @param \Drupal\Core\Entity\EntityInterface $entity
-   *   The entity to check.
-   *
-   * @return bool
-   *   TRUE if the entity is the full page entity for the current request,
-   *   FALSE otherwise.
-   */
-  private function isFullPageEntity(EntityInterface $entity): bool {
-    $request = $this->requestStack->getCurrentRequest();
-    $page_entity = $request
-      ->get($entity->getEntityTypeId());
-    if ($page_entity instanceof EntityInterface) {
-      return $page_entity->uuid() === $entity->uuid();
-    }
-    $uuid = $request->get('uuid');
-    return $uuid === $entity->uuid();
+    // Validate the analytics tracker plugin form.
+    $this->validatePluginForm($form, $form_state, 'analytics', 'tracker');
   }
 
 }
