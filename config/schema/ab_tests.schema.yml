@@ -1,3 +1,4 @@
+# Schema for the configuration files of the A/B Tests module.
 ab_tests.settings:
   type: config_object
   label: 'A/B Tests settings'
@@ -5,3 +6,43 @@ ab_tests.settings:
     ignore_config_export:
       type: boolean
       label: 'Ignore A/B Tests configuration during configuration export'
+
+# Schema for third-party settings for node types.
+node.type.*.third_party.ab_tests:
+  type: mapping
+  label: 'A/B Tests third party settings'
+  mapping:
+    ab_tests:
+      type: mapping
+      label: 'A/B Tests configuration'
+      mapping:
+        is_active:
+          type: boolean
+          label: 'Is active'
+        debug:
+          type: boolean
+          label: 'Debug mode'
+        default:
+          type: mapping
+          mapping:
+            display_mode:
+              type: string
+              label: 'Default display mode'
+        variants:
+          type: mapping
+          label: 'Variant decider configuration'
+          mapping:
+            id:
+              type: string
+              label: 'Variant decider plugin ID'
+            settings:
+              type: ab_tests.variants.[%parent.id]
+        analytics:
+          type: mapping
+          label: 'Analytics tracker configuration'
+          mapping:
+            id:
+              type: string
+              label: 'Analytics tracker plugin ID'
+            settings:
+              type: ab_tests.analytics.[%parent.id]

@@ -1,0 +1,9 @@
+ab_tests.analytics.mock_tracker:
+  type: mapping
+  mapping:
+    id:
+      type: string
+    api_key:
+      type: string
+    tracking_domain:
+      type: string

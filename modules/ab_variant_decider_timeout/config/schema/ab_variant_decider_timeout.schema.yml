@@ -1,0 +1,16 @@
+ab_tests.variants.timeout:
+  type: mapping
+  mapping:
+    id:
+      type: string
+    timeout:
+      type: mapping
+      mapping:
+        min:
+          type: string
+        max:
+          type: string
+    available_variants:
+      type: sequence
+      sequence:
+        type: string
