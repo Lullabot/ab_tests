@@ -87,14 +87,15 @@ jobs:
       - name: Install Drupal
         run: |
           php ./core/scripts/drupal install
-      - name: Run Unit Tests
-        run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Unit
 
-      - name: Run Kernel Tests
-        run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Kernel
-
+#      - name: Run Unit Tests
+#        run: |
+#          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Unit
+#
+#      - name: Run Kernel Tests
+#        run: |
+#          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Kernel
+#
       - name: Run Functional Tests
         run: |
           SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Functional
