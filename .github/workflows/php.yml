@@ -86,20 +86,19 @@ jobs:
 
       - name: Install Drupal
         run: |
-          cp modules/ab_tests/phpunit.xml ./phpunit.xml
           php ./core/scripts/drupal install
       - name: Run Unit Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=unit modules/ab_tests
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --testsuite=unit modules/ab_tests
 
       - name: Run Kernel Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=kernel modules/ab_tests
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --testsuite=kernel modules/ab_tests
 
       - name: Run Functional Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=functional modules/ab_tests
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --testsuite=functional modules/ab_tests
 
       - name: Run Functional JavaScript Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c phpunit.xml --testsuite=functional-javascript modules/ab_tests
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist --testsuite=functional-javascript modules/ab_tests
