@@ -66,13 +66,11 @@ jobs:
 #
 #      - name: Install module dependencies
 #        run: |
-#          composer --no-interaction --no-progress require \
-#            drupal/my-dependeny
+#          composer --no-interaction --no-progress require drupal/my-dependeny
 
       - name: Install Coder module
         run: |
-          composer --dev --no-interaction --no-progress require \
-            drupal/coder:^8
+          composer --dev --no-interaction --no-progress require drupal/coder:^8
 
       - name: Check coding standards
         run: |
