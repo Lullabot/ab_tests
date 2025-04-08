@@ -87,8 +87,7 @@ jobs:
       - name: Install Drupal
         run: |
           cp modules/ab_tests/phpunit.xml ./phpunit.xml
-          php ./core/scripts/drupal install --db-url=mysql://root:root@127.0.0.1/drupal
-
+          php ./core/scripts/drupal install
       - name: Run Unit Tests
         run: |
           SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=unit modules/ab_tests
