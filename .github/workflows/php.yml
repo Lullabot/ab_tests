@@ -23,7 +23,7 @@ jobs:
       - name: Checkout module
         uses: actions/checkout@v4
         with:
-          path: modules/commerce_product_saleprice
+          path: modules/ab_tests
 
       - name: Setup PHP, with composer and extensions
         uses: shivammathur/setup-php@v2
@@ -45,11 +45,11 @@ jobs:
       - name: Install Drupal core dependencies
         run: |
           composer --no-interaction --no-progress --prefer-dist --optimize-autoloader install
-
-      - name: Install module dependencies
-        run: |
-          composer --no-interaction --no-progress require \
-            drupal/commerce
+#
+#      - name: Install module dependencies
+#        run: |
+#          composer --no-interaction --no-progress require \
+#            drupal/my-dependeny
 
       - name: Install Coder module
         run: |
