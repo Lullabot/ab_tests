@@ -6,7 +6,6 @@ use Drupal\ab_tests\AbAnalyticsPluginManager;
 use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\ab_tests\UiPluginInterface;
 use Drupal\ab_tests\UiPluginManagerInterface;
-use Drupal\Component\Annotation\Plugin;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Component\Utility\NestedArray;
@@ -77,7 +76,7 @@ trait PluginSelectionFormTrait {
     array $settings,
     string $plugin_type,
   ): void {
-    $get_plugin_label = static function(PluginInspectionInterface $plugin): string {
+    $get_plugin_label = static function (PluginInspectionInterface $plugin): string {
       return $plugin instanceof UiPluginInterface ? $plugin->label() : $plugin->getPluginId();
     };
 
@@ -296,7 +295,7 @@ trait PluginSelectionFormTrait {
     }
 
     // Set validation limits before creating any plugin instances to avoid serialization issues.
-    // @todo: do we actually need this???
+    // @todo do we actually need this???
     $form_state->setLimitValidationErrors(
       [
         ['ab_tests', $plugin_type_id, 'config_wrapper', 'settings'],

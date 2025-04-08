@@ -26,7 +26,7 @@ class TimeoutDeciderTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->assertSession()->elementExists('css', '[data-ab-tests-entity-root]');
     $this->assertSession()->elementExists('css', '[data-ab-tests-decider-status="pending"]');
 
-    // @todo: Figure out how to assert that the new content is rendered with the correct attributes.
+    // @todo Figure out how to assert that the new content is rendered with the correct attributes.
   }
 
 }

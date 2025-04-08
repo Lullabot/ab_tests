@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\Functional;
 
-use Drupal\node\Entity\NodeType;
 use Drupal\Tests\ab_tests\AbTestsTestBaseTrait;
 use Drupal\Tests\BrowserTestBase;
 
@@ -45,7 +44,6 @@ abstract class AbTestsFunctionalTestBase extends BrowserTestBase {
       'name' => 'A/B Test Type',
     ]);
   }
-
 
   /**
    * Asserts that certain form elements exist on the content type form.

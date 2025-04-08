@@ -35,14 +35,14 @@ final class AbVariantDeciderPluginManager extends DefaultPluginManager implement
     if (is_null($plugin_ids)) {
       $definitions = $this->getDefinitions();
       $plugin_ids = array_map(
-        function($definition) {
+        function ($definition) {
           return empty($definition) ? NULL : $definition['id'];
         }, $definitions
       );
       $plugin_ids = array_filter(array_values($plugin_ids));
     }
     $deciders = array_map(
-      function($plugin_id) use ($settings) {
+      function ($plugin_id) use ($settings) {
         try {
           return $this->createInstance($plugin_id, $settings[$plugin_id] ?? []);
         }
@@ -52,9 +52,9 @@ final class AbVariantDeciderPluginManager extends DefaultPluginManager implement
       }, $plugin_ids
     );
     return array_filter(
-      $deciders, function($decider) {
-      return $decider instanceof AbVariantDeciderInterface;
-    }
+      $deciders, function ($decider) {
+        return $decider instanceof AbVariantDeciderInterface;
+      }
     );
   }
 

@@ -94,7 +94,7 @@ final class AbTestsSettingsForm extends ConfigFormBase {
             'The @config_filter module is required to ignore A/B Tests settings in the configuration export. Install the module to enable this feature.', [
               '@config_filter' => $config_filter_link,
             ]
-          ) . '</div>',
+        ) . '</div>',
         '#weight' => -10,
       ];
     }

@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @file
+ * Module implementation file.
+ */
+
 declare(strict_types=1);
 
 /**

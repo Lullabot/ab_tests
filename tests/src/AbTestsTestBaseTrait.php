@@ -7,6 +7,9 @@ namespace Drupal\Tests\ab_tests;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\node\Entity\NodeType;
 
+/**
+ * Trait for testing.
+ */
 trait AbTestsTestBaseTrait {
 
   /**

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
-use Drupal\node\Entity\Node;
-
 /**
  * Tests the node display with A/B testing enabled.
  *
