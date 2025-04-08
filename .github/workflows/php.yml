@@ -1,0 +1,66 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: 0 0 * * *
+
+jobs:
+  lint:
+    runs-on: "ubuntu-latest"
+    name: "Linting | PHP ${{ matrix.php-version }}"
+    strategy:
+      matrix:
+        php-version:
+          - "8.2"
+          - "8.3"
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+      - name: "Install PHP"
+        uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "none"
+          php-version: "${{ matrix.php-version }}"
+          tools: composer:v2
+          extensions: dom, curl, libxml, mbstring, zip, pdo, mysql, pdo_mysql, gd
+      - name: "Install dependencies"
+        uses: "ramsey/composer-install@v3"
+      - name: "PHPCS"
+        run: "php vendor/bin/phpcs"
+      - name: "PHPStan"
+        run: "php vendor/bin/phpstan analyze"
+  tests:
+    continue-on-error: ${{ matrix.experimental }}
+    runs-on: "ubuntu-latest"
+    name: "Tests | PHP ${{ matrix.php-version }} | Drupal ${{ matrix.drupal }}"
+    strategy:
+      matrix:
+        experimental: [false]
+        php-version:
+          - "8.2"
+          - "8.3"
+        drupal:
+          - "^10"
+        include:
+          - php-version: "8.3"
+            drupal: "11.x-dev"
+            experimental: true
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v4"
+      - name: "Install PHP"
+        uses: "shivammathur/setup-php@v2"
+        with:
+          coverage: "xdebug"
+          php-version: "${{ matrix.php-version }}"
+          tools: composer:v2
+          extensions: dom, curl, libxml, mbstring, zip, pdo, mysql, pdo_mysql, gd
+      - name: "Set drupal/core to ${{ matrix.drupal }}"
+        run: "composer require drupal/core-recommended:${{ matrix.drupal }} --with-all-dependencies --dev --no-update"
+      - name: "Install dependencies"
+        uses: "ramsey/composer-install@v3"
+      - name: "PHPUnit"
+        run: "php vendor/bin/phpunit"
