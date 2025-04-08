@@ -20,8 +20,6 @@ class EntityHelper {
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manager instance.
-   *
-   * @return void
    */
   public function __construct(private readonly EntityTypeManagerInterface $entityTypeManager) {}
 

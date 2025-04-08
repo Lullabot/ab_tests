@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
-use Drupal\Core\Session\AccountInterface;
 use Drupal\FunctionalJavascriptTests\WebDriverTestBase;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeInterface;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\Functional;
 
-use Drupal\node\Entity\NodeType;
 use Drupal\Tests\ab_tests\AbTestsTestBaseTrait;
 use Drupal\Tests\BrowserTestBase;
 
@@ -46,7 +45,6 @@ abstract class AbTestsFunctionalTestBase extends BrowserTestBase {
     ]);
   }
 
-
   /**
    * Asserts that certain form elements exist on the content type form.
    *
@@ -62,8 +60,6 @@ abstract class AbTestsFunctionalTestBase extends BrowserTestBase {
   /**
    * Asserts that certain third-party settings exist for a content type.
    *
-   * @param string $type_id
-   *   The content type machine name.
    * @param array $expected_settings
    *   The expected settings array.
    */

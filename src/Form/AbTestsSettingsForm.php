@@ -25,7 +25,7 @@ final class AbTestsSettingsForm extends ConfigFormBase {
    *   The config factory service.
    * @param \Drupal\Core\Config\TypedConfigManagerInterface $typed_config_manager
    *   The typed config manager service.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler service.
    */
   public function __construct(
@@ -94,7 +94,7 @@ final class AbTestsSettingsForm extends ConfigFormBase {
             'The @config_filter module is required to ignore A/B Tests settings in the configuration export. Install the module to enable this feature.', [
               '@config_filter' => $config_filter_link,
             ]
-          ) . '</div>',
+        ) . '</div>',
         '#weight' => -10,
       ];
     }

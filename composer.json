@@ -3,7 +3,11 @@
     "description": "A/B Tests Drupal module",
     "type": "drupal-module",
     "license": "proprietary",
-    "require": {
-        "drupal/core": "^10 || ^11"
-    }
+    "authors": [
+        {
+            "name": "Mateu Aguilo Bosch",
+            "email": "mateu@mateuaguilo.com"
+        }
+    ],
+    "require": {}
 }
