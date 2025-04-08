@@ -45,8 +45,6 @@ trait AbTestsTestBaseTrait {
   /**
    * Enables the A/B testing for a content type and saves it.
    *
-   * @param string $type_id
-   *   The content type machine name.
    * @param array $settings
    *   (optional) The AB test settings. Defaults to basic settings with testing
    *   enabled and debug mode on.

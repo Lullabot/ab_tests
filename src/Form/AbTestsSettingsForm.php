@@ -25,7 +25,7 @@ final class AbTestsSettingsForm extends ConfigFormBase {
    *   The config factory service.
    * @param \Drupal\Core\Config\TypedConfigManagerInterface $typed_config_manager
    *   The typed config manager service.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler service.
    */
   public function __construct(

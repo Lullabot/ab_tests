@@ -197,7 +197,8 @@ trait PluginSelectionFormTrait {
   protected function getSelectedPluginFromFormState(FormStateInterface $form_state, string $plugin_type): ?string {
     $triggering_element = $form_state->getTriggeringElement();
 
-    // If this is an AJAX request and the triggering element is the plugin selector.
+    // If this is an AJAX request and the triggering element is the plugin
+    // selector.
     if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'settings') {
       $plugin_id = $form_state->getValue(array_merge([
         'ab_tests',
@@ -294,7 +295,8 @@ trait PluginSelectionFormTrait {
       return;
     }
 
-    // Set validation limits before creating any plugin instances to avoid serialization issues.
+    // Set validation limits before creating any plugin instances to avoid
+    // serialization issues.
     // @todo do we actually need this???
     $form_state->setLimitValidationErrors(
       [

@@ -60,8 +60,6 @@ abstract class AbTestsFunctionalTestBase extends BrowserTestBase {
   /**
    * Asserts that certain third-party settings exist for a content type.
    *
-   * @param string $type_id
-   *   The content type machine name.
    * @param array $expected_settings
    *   The expected settings array.
    */

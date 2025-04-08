@@ -54,7 +54,7 @@ jobs:
       - name: Install Coder module
         run: |
           composer --dev --no-interaction --no-progress require \
-            drupal/coder:8.3.13
+            drupal/coder:^8
 
       - name: Check coding standards
         run: |
