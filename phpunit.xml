@@ -1,32 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- AB Tests Module PHPUnit Configuration -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd" bootstrap="vendor/autoload.php"
-         forceCoversAnnotation="false" beStrictAboutCoversAnnotation="true" beStrictAboutOutputDuringTests="true"
-         beStrictAboutTodoAnnotatedTests="true" beStrictAboutChangesToGlobalState="true" verbose="false">
-    <coverage processUncoveredFiles="true">
-        <include>
-            <directory suffix=".php">src</directory>
-        </include>
-        <exclude>
-            <directory>./vendor</directory>
-            <directory>./tests</directory>
-        </exclude>
-        <report>
-            <clover outputFile="clover.xml"/>
-            <text outputFile="php://stdout" showUncoveredFiles="true"/>
-        </report>
-    </coverage>
-    <php>
-        <ini name="error_reporting" value="32767"/>
-        <ini name="memory_limit" value="-1"/>
-        <!-- Drupal requires Symfony PHPUnit Bridge, silence its warnings. -->
-        <env name="SYMFONY_DEPRECATIONS_HELPER" value="disabled"/>
-    </php>
-    <testsuites>
-        <testsuite name="default">
-            <directory suffix="Test.php">tests/src</directory>
-        </testsuite>
-    </testsuites>
-    <logging/>
-</phpunit>
+         bootstrap="../../core/tests/bootstrap.php"
+         colors="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutChangesToGlobalState="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         displayDetailsOnTestsThatTriggerErrors="true"
+         displayDetailsOnTestsThatTriggerWarnings="true"
+         displayDetailsOnTestsThatTriggerDeprecations="true"
+         cacheResult="false"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         cacheDirectory="../../.phpunit.cache">
+  <php>
+    <!-- Set error reporting to E_ALL. -->
+    <ini name="error_reporting" value="32767"/>
+    <!-- Do not limit the amount of memory tests take to run. -->
+    <ini name="memory_limit" value="-1"/>
+    <!-- These variables can be customized for the test environment -->
+    <!-- Example SIMPLETEST_BASE_URL value: http://localhost -->
+    <env name="SIMPLETEST_BASE_URL" value=""/>
+    <!-- Example SIMPLETEST_DB value: mysql://username:password@localhost/database_name#table_prefix -->
+    <env name="SIMPLETEST_DB" value=""/>
+    <!-- Example for changing the driver class for mink tests MINK_DRIVER_CLASS value: 'Drupal\FunctionalJavascriptTests\DrupalSelenium2Driver' -->
+    <env name="MINK_DRIVER_CLASS" value=""/>
+    <!-- Example for changing the driver args to mink tests MINK_DRIVER_ARGS value: '["http://127.0.0.1:8510"]' -->
+    <env name="MINK_DRIVER_ARGS" value=""/>
+    <!-- Example for changing the driver args to webdriver tests MINK_DRIVER_ARGS_WEBDRIVER value: '["chrome", { "goog:chromeOptions": { "w3c": false } }, "http://localhost:4444/wd/hub"]' For using the Firefox browser, replace "chrome" with "firefox" -->
+    <env name="MINK_DRIVER_ARGS_WEBDRIVER" value=""/>
+  </php>
 
+  <testsuites>
+    <testsuite name="unit">
+      <directory>./tests/src/Unit</directory>
+    </testsuite>
+    <testsuite name="kernel">
+      <directory>./tests/src/Kernel</directory>
+    </testsuite>
+    <testsuite name="functional">
+      <directory>./tests/src/Functional</directory>
+    </testsuite>
+    <testsuite name="functional-javascript">
+      <directory>./tests/src/FunctionalJavascript</directory>
+    </testsuite>
+  </testsuites>
+
+  <!-- Settings for coverage reports. -->
+  <source ignoreSuppressionOfDeprecations="true">
+    <include>
+      <directory>./src</directory>
+    </include>
+    <exclude>
+      <directory>./tests</directory>
+      <directory suffix=".api.php">./</directory>
+    </exclude>
+  </source>
+</phpunit>

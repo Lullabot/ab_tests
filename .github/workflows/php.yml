@@ -8,6 +8,23 @@ jobs:
   testing:
     name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
     runs-on: ubuntu-latest
+    services:
+      # Set up MySQL for Drupal installation
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: drupal
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      # Set up Chrome for JavaScript tests
+      chrome:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 4444:4444
+        options: --health-cmd="/opt/bin/check-grid.sh" --health-interval=10s --health-timeout=5s --health-retries=3
+
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +46,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
+          extensions: mbstring, xml, gd, opcache, mysql
           coverage: none
 
       - name: Get composer cache directory
@@ -60,6 +78,29 @@ jobs:
         run: |
           ./vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install modules/ab_tests
 
-      - name: Run Tests
+      - name: Setup web server
         run: |
-          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests
+          php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
+          echo "::set-output name=pid::$!"
+        id: server
+
+      - name: Install Drupal
+        run: |
+          cp modules/ab_tests/phpunit.xml ./phpunit.xml
+          php ./core/scripts/drupal install --db-url=mysql://root:root@127.0.0.1/drupal
+
+      - name: Run Unit Tests
+        run: |
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=unit modules/ab_tests
+
+      - name: Run Kernel Tests
+        run: |
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=kernel modules/ab_tests
+
+      - name: Run Functional Tests
+        run: |
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c phpunit.xml --testsuite=functional modules/ab_tests
+
+      - name: Run Functional JavaScript Tests
+        run: |
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c phpunit.xml --testsuite=functional-javascript modules/ab_tests
