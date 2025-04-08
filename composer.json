@@ -9,47 +9,5 @@
             "email": "mateu@mateuaguilo.com"
         }
     ],
-    "require": {},
-    "require-dev": {
-        "behat/mink": "^1.10",
-        "composer/installers": "^1.9",
-        "drupal/core-recommended": "^10",
-        "drupal/coder": "^8",
-        "drush/drush": "^11 || ^12 || ^13",
-        "phpstan/extension-installer": "^1.4.3",
-        "phpstan/phpstan-strict-rules": "^2.0",
-        "phpunit/phpunit": "^9 || ^10 || ^11",
-        "slevomat/coding-standard": "^8.6",
-        "squizlabs/php_codesniffer": "^3.7",
-        "symfony/phpunit-bridge": "^6.2 || ^7.0"
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true,
-    "suggest": {
-        "phpstan/phpstan-deprecation-rules": "For catching deprecations, especially in Drupal core.",
-        "jangregor/phpstan-prophecy": "Provides a prophecy/prophecy extension for phpstan/phpstan.",
-        "phpstan/phpstan-phpunit": "PHPUnit extensions and rules for PHPStan."
-    },
-    "extra": {
-        "installer-paths": {
-            "tests/fixtures/drupal/core": ["type:drupal-core"],
-            "tests/fixtures/drupal/libraries/{$name}": ["type:drupal-library"],
-            "tests/fixtures/drupal/modules/contrib/{$name}": ["type:drupal-module"],
-            "tests/fixtures/drupal/profiles/contrib/{$name}": ["type:drupal-profile"],
-            "tests/fixtures/drupal/themes/contrib/{$name}": ["type:drupal-theme"]
-        },
-        "phpstan": {
-            "includes": [
-                "extension.neon",
-                "rules.neon"
-            ]
-        }
-    },
-    "config": {
-        "allow-plugins": {
-            "composer/installers": true,
-            "phpstan/extension-installer": true,
-            "dealerdirect/phpcodesniffer-composer-installer": true
-        }
-    }
+    "require": {}
 }
