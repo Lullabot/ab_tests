@@ -72,6 +72,7 @@ final class AbTestsController extends ControllerBase {
     $view_builder = $this->entityTypeManager()->getViewBuilder('node');
     $build = $view_builder->view($entity, $display_mode);
     $build['#attributes']['data-ab-tests-decision'] = $display_mode;
+    $build['#attributes']['data-ab-tests-decider-status'] = 'success';
 
     // Render the entity.
     $context = new RenderContext();

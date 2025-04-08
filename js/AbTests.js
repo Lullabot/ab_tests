@@ -43,6 +43,7 @@
      */
     registerElement(element) {
       element.setAttribute('data-ab-tests-decider-status', 'idle');
+      this.debug && console.debug('[A/B Tests]', 'A/B test registered for element:', element);
 
       // Hide the default variant and show skeleton.
       this._showSkeleton(element);
@@ -147,7 +148,7 @@
         const result = await tracker.track(decision, element);
         const status = 'success';
         tracker.setStatus(status);
-        element.setAttribute('data-ab-tests-tracking-status', status);
+        element.setAttribute('data-ab-tests-tracker-status', status);
         this.debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
         return result;
       } catch (error) {
@@ -196,7 +197,7 @@
      *   The root element to skeletonize.
      */
     _showSkeleton(element) {
-      this.debug && console.debug('[A/B Tests]', 'Turining the default A/B Test view mode into the page skeleton');
+      this.debug && console.debug('[A/B Tests]', 'Turning the default A/B Test view mode into the page skeleton');
       element.classList.add('ab-test-loading');
     }
 
@@ -251,7 +252,7 @@
         context,
       );
 
-      elements.forEach(Drupal.abTests.registerElement.bind(Drupal.abTests));
+      elements.forEach(element => Drupal.abTests.registerElement(element));
     },
   };
 
