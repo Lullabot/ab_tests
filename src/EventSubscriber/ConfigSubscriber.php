@@ -26,9 +26,9 @@ final class ConfigSubscriber implements EventSubscriberInterface {
   /**
    * Constructs a new ConfigSubscriber object.
    *
-   * @param \Drupal\Core\Config\StorageInterface $config_storage
+   * @param \Drupal\Core\Config\StorageInterface $activeStorage
    *   The config active storage.
-   * @param \Drupal\Core\Config\StorageInterface $sync_storage
+   * @param \Drupal\Core\Config\StorageInterface $syncStorage
    *   The sync config storage.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The configuration factory.
