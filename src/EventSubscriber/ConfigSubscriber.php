@@ -17,27 +17,6 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 final class ConfigSubscriber implements EventSubscriberInterface {
 
   /**
-   * Configuration prefixes to ignore.
-   *
-   * @var array
-   */
-  const PREFIXES = ['node.type.'];
-
-  /**
-   * The active config storage.
-   *
-   * @var \Drupal\Core\Config\StorageInterface
-   */
-  protected StorageInterface $activeStorage;
-
-  /**
-   * The sync config storage.
-   *
-   * @var \Drupal\Core\Config\StorageInterface
-   */
-  protected StorageInterface $syncStorage;
-
-  /**
    * Ignore ab_tests settings?
    *
    * @var bool
@@ -54,9 +33,11 @@ final class ConfigSubscriber implements EventSubscriberInterface {
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
    *   The configuration factory.
    */
-  public function __construct(StorageInterface $config_storage, StorageInterface $sync_storage, ConfigFactoryInterface $config_factory) {
-    $this->activeStorage = $config_storage;
-    $this->syncStorage = $sync_storage;
+  public function __construct(
+    protected StorageInterface $activeStorage,
+    protected StorageInterface $syncStorage,
+    ConfigFactoryInterface $config_factory,
+  ) {
     $this->ignoreSettings = (bool) $config_factory->get('ab_tests.settings')->get('ignore_config_export') ?? FALSE;
   }
 
@@ -66,7 +47,7 @@ final class ConfigSubscriber implements EventSubscriberInterface {
    * @param \Drupal\Core\Config\StorageTransformEvent $event
    *   The config storage transform event.
    */
-  public function onImportTransform(StorageTransformEvent $event) {
+  public function onImportTransform(StorageTransformEvent $event): void {
     if (!$this->ignoreSettings) {
       return;
     }
@@ -104,7 +85,7 @@ final class ConfigSubscriber implements EventSubscriberInterface {
     StorageInterface $transformation_storage,
     StorageInterface $destination_storage,
     string $collection_name,
-  ) {
+  ): void {
     $transformation_collection = $transformation_storage->createCollection($collection_name);
     $destination_collection = $destination_storage->createCollection($collection_name);
 
@@ -136,7 +117,7 @@ final class ConfigSubscriber implements EventSubscriberInterface {
    * @param \Drupal\Core\Config\StorageTransformEvent $event
    *   The config storage transform event.
    */
-  public function onExportTransform(StorageTransformEvent $event) {
+  public function onExportTransform(StorageTransformEvent $event): void {
     if (!$this->ignoreSettings) {
       return;
     }
@@ -163,7 +144,7 @@ final class ConfigSubscriber implements EventSubscriberInterface {
    * @param string $collection_name
    *   The configuration collection name.
    */
-  private function onExportTransformCollection(StorageInterface $transformation_storage, string $collection_name) {
+  private function onExportTransformCollection(StorageInterface $transformation_storage, string $collection_name): void {
     $transformation_collection = $transformation_storage->createCollection($collection_name);
     $configuration_names = $transformation_collection->listAll('node.type.');
     array_map(
@@ -206,9 +187,14 @@ final class ConfigSubscriber implements EventSubscriberInterface {
    * {@inheritdoc}
    */
   public static function getSubscribedEvents() {
-    $events[ConfigEvents::STORAGE_TRANSFORM_IMPORT][] = ['onImportTransform'];
-    $events[ConfigEvents::STORAGE_TRANSFORM_EXPORT][] = ['onExportTransform'];
-    return $events;
+    return [
+      ConfigEvents::STORAGE_TRANSFORM_IMPORT => [
+        ['onImportTransform'],
+      ],
+      ConfigEvents::STORAGE_TRANSFORM_EXPORT => [
+        ['onExportTransform'],
+      ],
+    ];
   }
 
 }

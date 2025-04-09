@@ -14,3 +14,10 @@ services:
     parent: default_plugin_manager
   Drupal\ab_tests\AbAnalyticsPluginManager:
     alias: plugin.manager.ab_analytics
+  Drupal\ab_tests\EventSubscriber\ConfigSubscriber:
+    arguments:
+      - '@config.storage'
+      - '@config.storage.sync'
+      - '@config.factory'
+    tags:
+      - { name: event_subscriber }
