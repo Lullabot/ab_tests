@@ -1,7 +1,0 @@
-ab_variant_decider.timeout:
-  js:
-    js/ab-variant-decider-timeout.js: { }
-    js/TimeoutDecider.js: { }
-  dependencies:
-    - core/once
-    - ab_tests/ab_tests

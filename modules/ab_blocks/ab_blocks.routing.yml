@@ -1,0 +1,22 @@
+ab_blocks.block.ajax_render:
+  path: 'ab-blocks/ajax-block/{plugin_id}/{placement_id}/{encoded_config}/{encoded_contexts}'
+  defaults:
+    _controller: Drupal\ab_blocks\Controller\AjaxBlockRender
+  methods:
+    - GET
+  requirements:
+    _permission: 'access content'
+
+ab_blocks.manage_ab_testing_block:
+  path: '/layout_builder/update/ab-testing/{section_storage_type}/{section_storage}/{delta}/{uuid}'
+  defaults:
+    _form: '\Drupal\ab_blocks\Form\ManageBlockTestingForm'
+    _title: 'A/B Testing Settings'
+  requirements:
+    _permission: 'administer experiment'
+    _layout_builder_access: 'view'
+  options:
+    _admin_route: TRUE
+    parameters:
+      section_storage:
+        layout_builder_tempstore: TRUE

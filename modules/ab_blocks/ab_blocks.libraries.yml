@@ -1,0 +1,21 @@
+ab_blocks:
+  js:
+    js/ab-blocks.js: { }
+  dependencies:
+    - core/drupal
+    - core/drupalSettings
+    - core/drupal.ajax
+    - core/once
+    - ls_launchdarkly/ls_launchdarkly
+
+ab_blocks_link_tracking:
+  js:
+    js/ab-blocks-link-tracking.js:
+      attributes:
+        async: true
+        defer: true
+  dependencies:
+    - core/once
+    - ls_adobe_analytics/launch
+    - ls_mparticle/mparticle_lib
+    - ls_launchdarkly/ls_launchdarkly

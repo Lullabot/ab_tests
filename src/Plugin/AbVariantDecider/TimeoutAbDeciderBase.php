@@ -2,56 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Drupal\ab_variant_decider_timeout\Plugin\AbVariantDecider;
+namespace Drupal\ab_tests\Plugin\AbVariantDecider;
 
 use Drupal\ab_tests\AbVariantDeciderPluginBase;
-use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ab_variant_decider.
- *
- * @AbVariantDecider(
- *   id = "timeout",
- *   label = @Translation("Timeout"),
- *   description = @Translation("A/B variant decider based on a random timeout."),
- *   decider_library = "ab_variant_decider_timeout/ab_variant_decider.timeout",
- * )
  */
-class TimeoutAbDecider extends AbVariantDeciderPluginBase {
+abstract class TimeoutAbDeciderBase extends AbVariantDeciderPluginBase {
 
   use StringTranslationTrait;
-
-  /**
-   * Creates a new TimeoutAbDecider object.
-   *
-   * @param array $configuration
-   *   The configuration.
-   * @param string $plugin_id
-   *   The plugin ID.
-   * @param array $plugin_definition
-   *   The plugin definition.
-   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
-   *   The entity display repository.
-   */
-  public function __construct(
-    array $configuration,
-    string $plugin_id,
-    array $plugin_definition,
-    protected readonly EntityDisplayRepositoryInterface $entityDisplayRepository,
-  ) {
-    parent::__construct($configuration, $plugin_id, $plugin_definition);
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
-    $entity_display_repository = $container->get('entity_display.repository');
-    return new static($configuration, $plugin_id, $plugin_definition, $entity_display_repository);
-  }
 
   /**
    * {@inheritdoc}
@@ -67,11 +29,6 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    $view_modes = $this->entityDisplayRepository->getViewModes('node');
-    $options = array_combine(
-      array_map(static fn(array $view_mode) => substr($view_mode['id'] ?? '', 5), $view_modes),
-      array_map(static fn(array $view_mode) => $view_mode['label'] ?? '', $view_modes),
-    );
     $configuration = $this->getConfiguration();
     return [
       'timeout' => [
@@ -94,12 +51,7 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
           '#default_value' => $configuration['timeout']['max'],
         ],
       ],
-      'available_variants' => [
-        '#title' => $this->t('Available Variants'),
-        '#type' => 'checkboxes',
-        '#options' => $options,
-        '#default_value' => $configuration['available_variants'],
-      ],
+      'available_variants' => $this->timeoutVariantSettingsForm(),
     ];
   }
 
@@ -137,5 +89,13 @@ class TimeoutAbDecider extends AbVariantDeciderPluginBase {
       'timeout' => $configuration['timeout'] ?? [],
     ];
   }
+
+  /**
+   * The form to specify the variants.
+   *
+   * @return array
+   *   The form.
+   */
+  protected abstract function timeoutVariantSettingsForm(): array;
 
 }

@@ -108,25 +108,25 @@ class ModuleLifecycleTest extends BrowserTestBase {
     // Verify that the example modules are not yet enabled.
     $module_handler = \Drupal::service('module_handler');
     $this->assertFalse($module_handler->moduleExists('ab_analytics_tracker_example'), 'AB Analytics Tracker Example module is not yet enabled.');
-    $this->assertFalse($module_handler->moduleExists('ab_variant_decider_timeout'), 'AB Variant Decider Timeout module is not yet enabled.');
+    $this->assertFalse($module_handler->moduleExists('ab_variant_decider_view_mode_timeout'), 'AB Variant Decider Timeout module is not yet enabled.');
 
     // Enable the example modules.
-    \Drupal::service('module_installer')->install(['ab_analytics_tracker_example', 'ab_variant_decider_timeout']);
+    \Drupal::service('module_installer')->install(['ab_analytics_tracker_example', 'ab_variant_decider_view_mode_timeout']);
     $this->rebuildContainer();
 
     // Verify that the example modules are now enabled.
     $module_handler = \Drupal::service('module_handler');
     $this->assertTrue($module_handler->moduleExists('ab_analytics_tracker_example'), 'AB Analytics Tracker Example module is now enabled.');
-    $this->assertTrue($module_handler->moduleExists('ab_variant_decider_timeout'), 'AB Variant Decider Timeout module is now enabled.');
+    $this->assertTrue($module_handler->moduleExists('ab_variant_decider_view_mode_timeout'), 'AB Variant Decider Timeout module is now enabled.');
 
     // Uninstall the example modules.
-    \Drupal::service('module_installer')->uninstall(['ab_analytics_tracker_example', 'ab_variant_decider_timeout']);
+    \Drupal::service('module_installer')->uninstall(['ab_analytics_tracker_example', 'ab_variant_decider_view_mode_timeout']);
     $this->rebuildContainer();
 
     // Verify that the example modules are now disabled.
     $module_handler = \Drupal::service('module_handler');
     $this->assertFalse($module_handler->moduleExists('ab_analytics_tracker_example'), 'AB Analytics Tracker Example module is now disabled.');
-    $this->assertFalse($module_handler->moduleExists('ab_variant_decider_timeout'), 'AB Variant Decider Timeout module is now disabled.');
+    $this->assertFalse($module_handler->moduleExists('ab_variant_decider_view_mode_timeout'), 'AB Variant Decider Timeout module is now disabled.');
   }
 
   /**

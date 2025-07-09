@@ -28,7 +28,7 @@ class NodeDisplayTest extends AbTestsFunctionalJavaScriptTestBase {
 
     // Verify variant decider and analytics JavaScript libraries are attached.
     $this->assertAttachedLibraries([
-      'ab_variant_decider_timeout/ab_variant_decider.timeout',
+      'ab_variant_decider_view_mode_timeout/ab_variant_decider.timeout',
     ]);
 
     // Verify debug mode information is present.

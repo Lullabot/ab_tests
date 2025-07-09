@@ -1,0 +1,7 @@
+name: Timeout A/B Variant Decider
+description: Generates a random variant after a random timeout.
+package: A/B Testing
+core_version_requirement: ^10 || ^11
+type: module
+dependencies:
+  - ab_tests:ab_tests

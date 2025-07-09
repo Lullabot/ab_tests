@@ -1,4 +1,4 @@
-ab_tests.variants.timeout:
+ab_tests.variants.timeout_view_mode:
   type: mapping
   mapping:
     id:

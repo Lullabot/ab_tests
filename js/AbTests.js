@@ -4,50 +4,9 @@
   /**
    * Manages A/B test decisions and variant switching.
    */
-  class AbTests {
+  class AbTestsManager {
 
     eventName = 'abTestFinished';
-    debug = false;
-    defaultViewMode = 'default';
-
-    /**
-     * Creates AbTests objects.
-     *
-     * This uses a singleton pattern.
-     *
-     * @param {boolean} debug
-     *   TRUE if debug mode is enabled.
-     * @param {string} defaultViewMode
-     *   The default view mode.
-     *
-     * @returns {AbTests}
-     *   The singleton instance.
-     */
-    constructor(debug, defaultViewMode) {
-      if (AbTests.instance) {
-        return AbTests.instance;
-      }
-
-      this.defaultViewMode = defaultViewMode;
-      this.debug = debug;
-      AbTests.instance = this;
-    }
-
-    /**
-     * Registers an element for A/B testing.
-     *
-     * @param {HTMLElement} element
-     *   The root element for this A/B test.
-     * @returns {AbTests}
-     *   The singleton instance.
-     */
-    registerElement(element) {
-      element.setAttribute('data-ab-tests-decider-status', 'idle');
-      this.debug && console.debug('[A/B Tests]', 'A/B test registered for element:', element);
-
-      // Hide the default variant and show skeleton.
-      this._showSkeleton(element);
-    }
 
     /**
      * Registers a decider for a specific test.
@@ -56,17 +15,23 @@
      *   The element.
      * @param {BaseDecider} decider
      *   The decider instance that implements decide().
+     * @param {string} defaultDecisionValue
+     *   The default decision. IMPORTANT: this needs to be a serialized string,
+     *   so we can compare with the actual decision.
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
+     *
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    registerDecider(element, decider) {
+    registerDecider(element, decider, defaultDecisionValue, debug = false) {
       const status = 'pending';
       decider.setStatus(status);
-      decider.setDebug(this.debug);
+      decider.setDebug(debug);
       element.setAttribute('data-ab-tests-decider-status', status);
 
       // Start the decision process.
-      return this._makeDecision(element, decider);
+      return this._makeDecision(element, decider, defaultDecisionValue, debug);
     }
 
     /**
@@ -76,17 +41,20 @@
      *   The element of the A/B test.
      * @param {BaseTracker} tracker
      *   The tracker instance that implements track().
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
+     *
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    async registerTracker(element, tracker) {
+    async registerTracker(element, tracker, debug = false) {
       let status = 'initializing';
       tracker.setStatus(status);
-      tracker.setDebug(this.debug);
-      this.debug && console.debug('[A/B Tests]', 'Initializing tracker.');
+      tracker.setDebug(debug);
+      debug && console.debug('[A/B Tests]', 'Initializing tracker.');
       element.setAttribute('data-ab-tests-tracker-status', status);
       await tracker.initialize();
-      this.debug && console.debug('[A/B Tests]', 'Tracker initialized.');
+      debug && console.debug('[A/B Tests]', 'Tracker initialized.');
       status = 'pending';
       tracker.setStatus(status);
       element.setAttribute('data-ab-tests-tracker-status', status);
@@ -95,7 +63,7 @@
         tracker,
         decision: element.getAttribute('data-ab-tests-decision'),
       };
-      return this._doTrack(element, eventInfo);
+      return this._doTrack(element, eventInfo, debug);
     }
 
     /**
@@ -105,26 +73,30 @@
      *   The DOM element.
      * @param {BaseDecider} decider
      *   The decider.
+     * @param {string} defaultDecisionValue
+     *   The default decision value.
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
      *
      * @returns {Promise<Decision>}
      *   Resolves with the decision once made.
      */
-    async _makeDecision(element, decider) {
+    async _makeDecision(element, decider, defaultDecisionValue, debug) {
       try {
-        this.debug && console.debug('[A/B Tests]', 'A decision is about to be made.');
+        debug && console.debug('[A/B Tests]', 'A decision is about to be made.');
         const decision = await decider.decide(element);
         const status = 'success';
         decider.setStatus(status);
         // Set a data attribute to indicate the test is in progress.
         element.setAttribute('data-ab-tests-decision-status', status);
-        this.debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
-        await this._handleDecision(element, decision);
+        debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
+        await this._handleDecision(element, decision, defaultDecisionValue, debug);
         return decision;
       } catch (error) {
         decider.onError(error);
-        this.debug && console.error('[A/B Tests]', 'Decision failed:', error);
+        debug && console.error('[A/B Tests]', 'Decision failed:', error);
         // On error, show the default variant.
-        this._showDefaultVariant(element);
+        showDefaultVariant(debug)(element);
       }
     }
 
@@ -139,21 +111,24 @@
      *   The tracker instance that implements track().
      * @param {Decision} eventInfo.decision
      *   The decision object.
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
+     *
      * @returns {Promise<Decision>}
      *   Resolves with the tracking made.
      */
-    async _doTrack(element, { tracker, decision }) {
+    async _doTrack(element, { tracker, decision }, debug) {
       try {
-        this.debug && console.debug('[A/B Tests]', 'Tracking is about to start.');
+        debug && console.debug('[A/B Tests]', 'Tracking is about to start.');
         const result = await tracker.track(decision, element);
         const status = 'success';
         tracker.setStatus(status);
         element.setAttribute('data-ab-tests-tracker-status', status);
-        this.debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
+        debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
         return result;
       } catch (error) {
         tracker.onError(error);
-        this.debug && console.error('[A/B Tests]', 'Tracking failed:', error);
+        debug && console.error('[A/B Tests]', 'Tracking failed:', error);
       }
     }
 
@@ -164,17 +139,17 @@
      *   The element.
      * @param {Decision} decision
      *   The decision object.
+     * @param {string} defaultDecisionValue
+     *   The default decision value.
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
      */
-    async _handleDecision(element, decision) {
+    async _handleDecision(element, decision, defaultDecisionValue, debug) {
       const uuid = element.getAttribute('data-ab-tests-entity-root');
-      if (decision.displayMode === this.defaultViewMode) {
-        this.debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
-        this._showDefaultVariant(element);
-        this.debug && console.debug('[A/B Tests]', 'Default variant un-hidden.');
+      if (decision.decisionValue === defaultDecisionValue) {
+        showDefaultVariant(debug)(element);
       } else {
-        this.debug && console.debug('[A/B Tests]', 'Requesting node to be rendered via Ajax.', uuid, decision);
-        await this._loadVariant(uuid, decision.displayMode);
-        this.debug && console.debug('[A/B Tests]', 'The entity was rendered with the new view mode.', uuid, decision);
+        await this._loadVariant(uuid, decision.decisionValue, debug);
       }
 
       // Dispatch decision event.
@@ -185,30 +160,9 @@
         },
         bubbles: true,
       });
-      this.debug && console.debug('[A/B Tests]', 'Dispatching event after showing the content.', event);
+      debug && console.debug('[A/B Tests]', 'Dispatching event after showing the content.', event);
       element.dispatchEvent(event);
-      this.debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
-    }
-
-    /**
-     * Internal method to show loading skeleton.
-     *
-     * @param {HTMLElement} element
-     *   The root element to skeletonize.
-     */
-    _showSkeleton(element) {
-      this.debug && console.debug('[A/B Tests]', 'Turning the default A/B Test view mode into the page skeleton');
-      element.classList.add('ab-test-loading');
-    }
-
-    /**
-     * Internal method to show the default variant.
-     *
-     * @param {HTMLElement} element
-     *   The root element to show.
-     */
-    _showDefaultVariant(element) {
-      element.classList.remove('ab-test-loading');
+      debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
     }
 
     /**
@@ -218,41 +172,64 @@
      *   The UUID of the entity.
      * @param {string} displayMode
      *   The display mode to load.
+     * @param {boolean} debug
+     *   Weather to add debug messages to the console.
+     *
      * @returns {Promise}
      *   Resolves when the variant is loaded.
      */
-    _loadVariant(uuid, displayMode) {
+    _loadVariant(uuid, displayMode, debug) {
+      debug && console.debug('[A/B Tests]', 'Requesting node to be rendered via Ajax.', uuid, displayMode);
       return new Promise((resolve, reject) => {
         Drupal.ajax({
           url: `/ab-tests/render/${uuid}/${displayMode}`,
           httpMethod: 'GET',
         }).execute()
+          .then(response => {
+            debug && console.debug('[A/B Tests]', 'The entity was rendered with the new view mode.', uuid);
+            return response;
+          })
           .then(resolve)
-          .catch(reject);
+          .catch(error => {
+            debug && console.debug('[A/B Tests]', 'There was an error rendering the entity: ', JSON.stringify(error), uuid);
+            reject(error);
+          });
       });
     }
 
   }
 
-  // Make the singleton instance available globally.
-  const debug = drupalSettings?.ab_tests?.debug || false;
-  const defaultViewMode = drupalSettings?.ab_tests?.defaultViewMode || 'default';
-  Drupal.abTests = new AbTests(debug, defaultViewMode);
 
+  /**
+   * Show loading skeleton.
+   */
+  const showSkeleton = (debug) => (element) => {
+    debug && console.debug('[A/B Tests]', 'Turning the default A/B Test view mode into the page skeleton');
+    element.classList.add('ab-test-loading');
+  }
+
+  /**
+   * Show the default variant.
+   */
+  const showDefaultVariant = (debug) => (element) => {
+    debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
+    element.classList.remove('ab-test-loading');
+    debug && console.debug('[A/B Tests]', 'Default variant un-hidden.');
+  }
+
+  Drupal.AbTestsManager = AbTestsManager;
   Drupal.behaviors.abTests = {
-    attach: function (context, settings) {
-      if (!Drupal.abTests) {
-        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
-        return;
-      }
-
+    attach: function (context, { ab_tests: { debug } }) {
       const elements = once(
         'ab-tests-element',
-        '[data-ab-tests-entity-root]',
+        // All the A/B tests should render from the server side with this data
+        // attribute.
+        '[data-ab-tests-decider-status="idle"]',
         context,
       );
 
-      elements.forEach(element => Drupal.abTests.registerElement(element));
+      // @todo I should remove the "debug" checkbox from all features. Instead it should live in a centralized place. Until that happens, I am hard-coding debug=true.
+      elements.forEach(showSkeleton(debug));
     },
   };
 

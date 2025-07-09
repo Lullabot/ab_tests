@@ -31,14 +31,14 @@ class TimeoutDecider extends BaseDecider {
     return new Promise((resolve) => {
       const duration = Math.floor(Math.random() * (this.maxTimeout - this.minTimeout)) + this.minTimeout;
       const randomIndex = Math.floor(Math.random() * this.variants.length);
-      const displayMode = this.variants[randomIndex];
+      const variantSettings = this.variants[randomIndex];
       const decisionId = this.generateDecisionId();
-      this.getDebug() && console.debug('[A/B Tests]', duration, displayMode, decisionId);
+      this.getDebug() && console.debug('[A/B Tests]', duration, variantSettings, decisionId);
 
       setTimeout(() => {
         resolve(new Decision(
           decisionId,
-          displayMode,
+          variantSettings,
           {
             timeout: duration,
             deciderId: 'timeout',

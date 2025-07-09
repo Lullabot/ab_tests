@@ -26,7 +26,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     'field_ui',
     'ab_tests',
     'ab_analytics_tracker_example',
-    'ab_variant_decider_timeout',
+    'ab_variant_decider_view_mode_timeout',
   ];
 
   /**
@@ -115,7 +115,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
   }
 
   /**
-   * Tests complex configuration using TimeoutAbDecider.
+   * Tests complex configuration using TimeoutViewModeAbDecider.
    */
   public function testPluginConfiguration(): void {
     // Access the content type edit form.
@@ -164,7 +164,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
   }
 
   /**
-   * Tests form validation with TimeoutAbDecider.
+   * Tests form validation with TimeoutViewModeAbDecider.
    */
   public function testTimeoutDeciderValidation(): void {
     // Access the content type edit form.

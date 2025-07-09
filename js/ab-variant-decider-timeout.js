@@ -6,19 +6,15 @@
    */
   Drupal.behaviors.abVariantDeciderTimeout = {
     attach(context, settings) {
-      if (!Drupal.abTests) {
-        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
-        return;
-      }
-
+      const { ab_tests: { deciderSettings, defaultDecisionValue, debug } } = settings;
       const elements = once(
         'ab-variant-decider-timeout',
-        '[data-ab-tests-entity-root]',
+        deciderSettings?.experimentsSelector,
         context,
       );
 
+      const abTestsManager = new Drupal.AbTestsManager();
       elements.forEach(element => {
-        const deciderSettings = settings.ab_tests?.deciderSettings;
         if (!deciderSettings) {
           return;
         }
@@ -37,7 +33,7 @@
 
         const decider = new TimeoutDecider(availableVariants, config);
 
-        Drupal.abTests.registerDecider(element, decider);
+        abTestsManager.registerDecider(element, decider, defaultDecisionValue, debug);
       });
     },
   };

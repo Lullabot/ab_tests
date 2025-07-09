@@ -1,0 +1,8 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+  ab_blocks.lb_subscriber:
+    class: Drupal\ab_blocks\EventSubscriber\TestableBlockComponentRenderArray
+    tags:
+      - { name: event_subscriber }

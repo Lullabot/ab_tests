@@ -54,7 +54,6 @@ trait AbTestsTestBaseTrait {
     if (empty($settings)) {
       $settings = [
         'is_active' => TRUE,
-        'debug' => TRUE,
         'default' => ['display_mode' => 'node.full'],
         'variants' => [
           'id' => 'timeout',

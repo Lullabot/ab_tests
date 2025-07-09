@@ -73,7 +73,7 @@ class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
         $settings_command_found = TRUE;
         $this->assertSame(
           'node.full',
-          $command['settings']['ab_tests']['defaultViewMode']['display_mode'],
+          $command['settings']['ab_tests']['defaultDecisionValue']['display_mode'],
         );
       }
       if ($command['command'] === 'add_js') {
