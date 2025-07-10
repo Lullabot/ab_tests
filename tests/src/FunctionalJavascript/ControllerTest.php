@@ -21,10 +21,9 @@ class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->drupalLogin($this->adminUser);
     $this->enableAbTestingForContentType([
       'is_active' => TRUE,
-      'debug' => TRUE,
       'default' => ['display_mode' => 'node.full'],
       'variants' => [
-        'id' => 'timeout',
+        'id' => 'timeout_view_mode',
         'settings' => [
           'timeout' => ['min' => 200, 'max' => 250],
           'available_variants' => ['full' => 'full', 'teaser' => 'teaser'],
@@ -72,8 +71,8 @@ class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
       if ($command['command'] === 'settings') {
         $settings_command_found = TRUE;
         $this->assertSame(
-          'node.full',
-          $command['settings']['ab_tests']['defaultDecisionValue']['display_mode'],
+          ['analyticsSettings' => ['id' => 'null'], 'debug' => FALSE],
+          $command['settings']['ab_tests'],
         );
       }
       if ($command['command'] === 'add_js') {

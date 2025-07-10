@@ -47,7 +47,7 @@ trait AbTestsTestBaseTrait {
    *
    * @param array $settings
    *   (optional) The AB test settings. Defaults to basic settings with testing
-   *   enabled and debug mode on.
+   *   enabled.
    */
   protected function enableAbTestingForContentType(array $settings = []): void {
     // Set default settings if none provided.
@@ -56,7 +56,7 @@ trait AbTestsTestBaseTrait {
         'is_active' => TRUE,
         'default' => ['display_mode' => 'node.full'],
         'variants' => [
-          'id' => 'timeout',
+          'id' => 'timeout_view_mode',
           'settings' => [
             'timeout' => ['min' => 200, 'max' => 250],
             'available_variants' => ['full' => 'full', 'teaser' => 'teaser'],

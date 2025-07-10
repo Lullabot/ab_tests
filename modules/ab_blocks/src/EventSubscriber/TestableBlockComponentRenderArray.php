@@ -45,7 +45,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
   /**
    * {@inheritdoc}
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     // This should run after rendering the initial block.
     $priority = (BlockComponentRenderArray::getSubscribedEvents()[LayoutBuilderEvents::SECTION_COMPONENT_BUILD_RENDER_ARRAY][1] ?? 100) - 20;
     return [

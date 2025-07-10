@@ -52,7 +52,6 @@ class ModuleLifecycleTest extends BrowserTestBase {
     ]);
     $this->contentTypeAbSettings = [
       'is_active' => TRUE,
-      'debug' => TRUE,
       'default' => ['display_mode' => 'node.full'],
       'variants' => ['id' => 'null'],
       'analytics' => ['id' => 'null'],

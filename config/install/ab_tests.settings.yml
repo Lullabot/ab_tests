@@ -1,2 +1,2 @@
-debug: false
+debug_mode: false
 ignore_config_export: false
