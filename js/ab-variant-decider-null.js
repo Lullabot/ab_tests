@@ -5,7 +5,8 @@
    * Behavior to initialize timeout decider.
    */
   Drupal.behaviors.abVariantDeciderNull = {
-    attach(context, { ab_tests: { deciderSettings, debug } }) {
+    attach(context, settings) {
+      const { ab_tests: { deciderSettings, debug } } = settings;
       const elements = once(
         'ab-variant-decider-null',
         deciderSettings?.experimentsSelector,
@@ -16,12 +17,16 @@
         return;
       }
 
-      const abTestsManager = new Drupal.AbTestsManager();
+      const abTestsManager = new AbTestsManager();
       elements.forEach(element => {
         const decider = new NullDecider();
-        const uuid = element.getAttribute('data-ab-tests-entity-root');
 
-        abTestsManager.registerDecider(uuid, decider, '', debug);
+        abTestsManager.registerDecider(
+          element,
+          decider,
+          settings.ab_tests || {},
+          debug,
+        );
       });
     },
   };

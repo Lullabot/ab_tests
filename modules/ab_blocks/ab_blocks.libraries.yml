@@ -1,12 +1,11 @@
 ab_blocks:
   js:
-    js/ab-blocks.js: { }
+    js/BlockDecisionHandler.js: { }
   dependencies:
     - core/drupal
     - core/drupalSettings
     - core/drupal.ajax
-    - core/once
-    - ls_launchdarkly/ls_launchdarkly
+    - ab_tests/ab_tests
 
 ab_blocks_link_tracking:
   js:

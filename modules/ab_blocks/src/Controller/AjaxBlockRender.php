@@ -5,17 +5,21 @@ declare(strict_types=1);
 namespace Drupal\ab_blocks\Controller;
 
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
+use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
-use Drupal\Core\Ajax\BaseCommand;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
+use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\TypedData\PrimitiveInterface;
+use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -24,31 +28,20 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 final class AjaxBlockRender extends ControllerBase {
 
   /**
-   * The renderer service.
-   *
-   * @var \Drupal\Core\Render\RendererInterface
-   */
-  private RendererInterface $renderer;
-
-  /**
-   * The block manager.
-   *
-   * @var \Drupal\Core\Block\BlockManagerInterface
-   */
-  protected BlockManagerInterface $blockManager;
-
-  /**
    * Creates an AjaxBlockRender object.
    *
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The renderer service.
    * @param \Drupal\Core\Block\BlockManagerInterface $blockManager
    *   The block manager.
+   * @param \Drupal\Core\TypedData\TypedDataManagerInterface $typedDataManager
+   *   The typed data manager.
    */
-  public function __construct(RendererInterface $renderer, BlockManagerInterface $blockManager) {
-    $this->renderer = $renderer;
-    $this->blockManager = $blockManager;
-  }
+  public function __construct(
+    protected RendererInterface $renderer,
+    protected BlockManagerInterface $blockManager,
+    protected TypedDataManagerInterface $typedDataManager,
+  ) {}
 
   /**
    * {@inheritdoc}
@@ -57,6 +50,7 @@ final class AjaxBlockRender extends ControllerBase {
     return new static(
       $container->get('renderer'),
       $container->get('plugin.manager.block'),
+      $container->get('typed_data_manager'),
     );
   }
 
@@ -94,7 +88,7 @@ final class AjaxBlockRender extends ControllerBase {
     assert($block instanceof ContextAwarePluginInterface);
     $build = $this->renderAsBlock($block, $placement_id);
     $context = new RenderContext();
-    $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
+    $html = $this->renderer->executeInRenderContext($context, function() use ($build) {
       return $this->renderer->render($build);
     });
 
@@ -118,7 +112,6 @@ final class AjaxBlockRender extends ControllerBase {
     // The selector for the insert command is NULL as the new content will
     // replace the element making the Ajax call.
     $response->addCommand(new InsertCommand(NULL, $html));
-    $response->addCommand(new BaseCommand('triggerCustomEvent', $placement_id));
     return $response;
   }
 
@@ -139,14 +132,30 @@ final class AjaxBlockRender extends ControllerBase {
    * @see \Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray
    */
   protected function renderAsBlock(ContextAwarePluginInterface $block, string $placement_id): array {
+    $access = $block->access($this->currentUser(), TRUE);
+    if (!$access->isAllowed()) {
+      return [];
+    }
+    $cache_metadata = new CacheableMetadata();
+    $cache_metadata->addCacheableDependency($block);
     $content = $block->build();
-    $build = ['#type' => 'container'];
+    $cache_metadata->addCacheableDependency(CacheableMetadata::createFromRenderArray($content));
+    $build = [
+      // This may be moved to BlockBase in https://www.drupal.org/node/2931040.
+      '#theme' => 'block',
+      '#configuration' => $block->getConfiguration(),
+      '#plugin_id' => $block->getPluginId(),
+      '#base_plugin_id' => $block->getBaseId(),
+      '#derivative_plugin_id' => $block->getDerivativeId(),
+      '#in_preview' => FALSE,
+    ];
+
     if (isset($content['#attributes'])) {
       $build['#attributes'] = $content['#attributes'];
       unset($content['#attributes']);
     }
-    // The block should be linked to the "triggerCustomEvent" command data.
     $build['#attributes']['data-ab-blocks-placement-id'] = $placement_id;
+    $build['#attributes']['data-ab-blocks-rendered-via'] = 'ajax';
     $build['#attributes']['class'] = ['block__ab-testable-block'];
     $build['content'] = $content;
     return $build;
@@ -206,18 +215,28 @@ final class AjaxBlockRender extends ControllerBase {
    *   The context value.
    */
   protected function deserializeContextValue(string $serialized_context_value) {
+    [$data_type, $data_value] = explode('=', $serialized_context_value);
+    try {
+      $typed_data_definition = $this->typedDataManager->getDefinition($data_type);
+      $typed_data_class = $typed_data_definition['class'] ?? NULL;
+    }
+    catch (PluginException $exception) {
+      return NULL;
+    }
     // Check if the serialized context value is supported.
-    if (str_starts_with($serialized_context_value, 'entity:')) {
+    if (is_a($typed_data_class, EntityAdapter::class, TRUE)) {
       // For now, we only support entity contexts.
-      [$param_type, $entity_id] = explode('=', $serialized_context_value);
-      [, $entity_type_id] = explode(':', $param_type);
+      [, $entity_type_id] = explode(':', $data_type);
       try {
         return $this->entityTypeManager()
           ->getStorage($entity_type_id)
-          ->load($entity_id);
+          ->load($data_value);
       }
-      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException|PluginNotFoundException  $e) {
       }
+    }
+    if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
+      return json_decode($data_value);
     }
     return NULL;
   }

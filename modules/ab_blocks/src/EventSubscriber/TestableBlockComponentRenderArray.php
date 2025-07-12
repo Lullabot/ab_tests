@@ -13,7 +13,10 @@ use Drupal\Component\Plugin\Factory\FactoryInterface;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\TypedData\PrimitiveInterface;
+use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
 use Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray;
 use Drupal\layout_builder\LayoutBuilderEvents;
@@ -200,8 +203,10 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       'placementId' => $placement_id,
       'debug' => (bool) ($settings['debug'] ?? FALSE),
     ];
-    $build[0]['content']['#attached']['drupalSettings']['ab_blocks'] = $drupal_settings;
+    $build[0]['content']['#attached']['drupalSettings']['ab_tests']['features']['ab_blocks'] = $drupal_settings;
     $build[0]['content']['#attributes']['data-ab-tests-decider-status'] = 'idle';
+    $build[0]['content']['#attributes']['data-ab-blocks-rendered-via'] = 'server';
+    $build[0]['content']['#attributes']['data-ab-tests-feature'] = 'ab_blocks';
     $build[0]['content']['#attached']['library'][] = 'ab_blocks/ab_blocks';
 
     // 6. Save the modified render array.
@@ -237,18 +242,26 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
     foreach ($contexts as $key => $context) {
       $data_type = $context->getContextDefinition()->getDataType();
-      // For now, we only support entity context.
-      if (!str_starts_with($data_type, 'entity:')) {
-        continue;
+      $typed_data = $context->getContextData();
+      // For now, we only support primitive values, and entity contexts.
+      if ($typed_data instanceof EntityAdapter) {
+        $entity = $context->getContextValue();
+        if (!$entity instanceof EntityInterface) {
+          continue;
+        }
+        $serialized_value = $entity->id();
       }
-      $entity = $context->getContextValue();
-      if (!$entity instanceof EntityInterface) {
+      elseif ($typed_data instanceof PrimitiveInterface) {
+        // Use JSON encoding to preserve the casted value after serialization.
+        $serialized_value = json_encode($typed_data->getCastedValue());
+      }
+      else {
         continue;
       }
       $serialized_context_values[$key] = sprintf(
         '%s=%s',
         $data_type,
-        $entity->id()
+        $serialized_value,
       );
     }
     return $serialized_context_values;

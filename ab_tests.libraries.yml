@@ -1,10 +1,14 @@
 ab_tests:
   js:
-    js/AbTests.js: { }
+    js/BaseDecisionHandler.js: { }
+    js/ViewModeDecisionHandler.js: { }
+    js/DecisionHandlerFactory.js: { }
+    js/AbTestsManager.js: { }
     js/BaseAction.js: { }
     js/BaseDecider.js: { }
     js/BaseTracker.js: { }
     js/Decision.js: { }
+    js/ab-tests-init.js: { }
   dependencies:
     - core/drupal
     - core/drupal.ajax

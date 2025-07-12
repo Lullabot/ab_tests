@@ -212,11 +212,12 @@ class AbTestsHooks {
     $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
     $view_mode = substr($settings['default']['display_mode'] ?? 'node.default', strlen($entity->getEntityTypeId()) + 1);
-    $build['#attached']['drupalSettings']['ab_tests']['defaultDecisionValue'] = $view_mode;
+    $build['#attached']['drupalSettings']['ab_tests']['features']['ab_view_modes']['defaultDecisionValue'] = $view_mode;
     $build['ab_tests_decider'] = $decider_build;
     $classes = $build['#attributes']['class'] ?? [];
     $build['#attributes']['class'] = [...$classes, 'ab-test-loading'];
     $build['#attributes']['data-ab-tests-decider-status'] = 'idle';
+    $build['#attributes']['data-ab-tests-feature'] = 'ab_view_modes';
     unset($build['ab_tests_decider']['#attached']);
 
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();

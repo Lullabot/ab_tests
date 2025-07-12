@@ -11,7 +11,7 @@
         !context.hasAttribute('data-ab-tests-decision')) {
         return;
       }
-      const abTestsManager = new Drupal.AbTestsManager();
+      const abTestsManager = new AbTestsManager();
       const apiKey = analyticsSettings?.apiKey || '';
       const config = { trackingDomain: analyticsSettings?.trackingDomain || '' };
       const tracker = new MockTracker(apiKey, config);

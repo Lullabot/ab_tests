@@ -26,12 +26,8 @@ class TimeoutBlockAbDecider extends TimeoutAbDeciderBase {
    */
   protected function timeoutVariantSettingsForm(): array {
     $options = [
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":false}},"label":"above"}}' => $this->t('With field markup, label above'),
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":false}},"label":"below"}}' => $this->t('With field markup, label below'),
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":false}},"label":"hidden"}}' => $this->t('With field markup, label hidden'),
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":true}},"label":"above"}}' => $this->t('Without field markup, label above'),
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":true}},"label":"below"}}' => $this->t('Without field markup, label below'),
-      '{formatter":{"third_party_settings":{"nomarkup":{"enabled":true}},"label":"hidden"}}' => $this->t('Without field markup, label hidden'),
+      '{"label_display":"0","formatter":{"third_party_settings":{"nomarkup":{"enabled":false}}}}' => $this->t('With field markup, but no title'),
+      '{"label_display":"1","formatter":{"third_party_settings":{"nomarkup":{"enabled":true}}}}' => $this->t('Without field markup, but with title'),
     ];
     $configuration = $this->getConfiguration();
     return [

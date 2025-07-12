@@ -11,7 +11,7 @@
         !context.hasAttribute('data-ab-tests-decision')) {
         return;
       }
-      const abTestsManager = new Drupal.AbTestsManager();
+      const abTestsManager = new AbTestsManager();
       await abTestsManager.registerTracker(context, new NullTracker(), debug);
     },
   };
