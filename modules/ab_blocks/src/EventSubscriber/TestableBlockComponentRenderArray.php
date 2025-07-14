@@ -11,6 +11,7 @@ use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockPluginInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Routing\RouteMatchInterface;
@@ -37,12 +38,15 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
    *   The plugin manager.
    * @param \Drupal\ab_tests\AbAnalyticsPluginManager $analyticsManager
    *   The analytics manager.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The configuration factory.
    */
   public function __construct(
     protected RouteMatchInterface $routeMatch,
     protected PageService $pageService,
     protected AbVariantDeciderPluginManager $variantDeciderManager,
     protected AbAnalyticsPluginManager $analyticsManager,
+    protected ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -72,7 +76,8 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
     $section_component = $event->getComponent();
     $settings = $section_component->get('additional')['ab_tests'] ?? [];
-    $settings['debug'] = \Drupal::config('ab_tests.settings')
+    $settings['debug'] = $this->configFactory
+      ->get('ab_tests.settings')
       ->get('debug_mode');
     // If we are in the Layout Builder interface, or there is no A/B test, then
     // abort.
@@ -104,6 +109,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $tracker_build['#attached'] ?? []);
       $build[0]['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
       $build[0]['content']['ab_tests_tracker'] = $tracker_build;
+      // phpcs:ignore
       unset($build[0]['content']['ab_tests_tracker']['#attached']);
       $event->setBuild($build);
       return;
@@ -117,7 +123,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     $original_build = $event->getBuild();
     $build = [
       '#weight' => $original_build['#weight'] ?? $event->getComponent()
-          ->getWeight() ?? 99,
+        ->getWeight() ?? 99,
       [
         'content' => [
           '#type' => 'container',
@@ -184,8 +190,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
 
     // IMPORTANT NOTE: This module currently only works for nodes.
-    $root_node = \Drupal::service(PageService::class)
-      ->getNodeFromCurrentRoute();
+    $root_node = $this->pageService->getNodeFromCurrentRoute();
     // Deal with a core bug that won't bubble up attachments correctly.
     $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build[0]['content']['ab_tests_decider'] = $decider_build;

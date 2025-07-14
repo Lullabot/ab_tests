@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Drupal\ab_variant_decider_block_timeout\Plugin\AbVariantDecider;
 
 use Drupal\ab_tests\Plugin\AbVariantDecider\TimeoutAbDeciderBase;
-use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ab_variant_decider.

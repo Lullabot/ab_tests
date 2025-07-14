@@ -76,7 +76,7 @@ class PageService {
       $route_match = $this->currentRouteMatch;
     }
     $entity = NULL;
-    // @todo: turn this into a hook!
+    // @todo turn this into a hook!
     $entity_parameter = $route_match->getParameter($entity_type_id) ?? $route_match->getParameter('current_entity');
     $entity_preview_parameter = $route_match->getParameter($entity_type_id . '_preview');
 
@@ -93,7 +93,7 @@ class PageService {
     try {
       $storage = $this->entityTypeManager->getStorage($entity_type_id);
     }
-    catch (PluginNotFoundException|InvalidPluginDefinitionException $e) {
+    catch (PluginNotFoundException | InvalidPluginDefinitionException $e) {
       throw new InvalidContextException($e->getMessage(), $e->getCode(), $e);
     }
     if (!$storage instanceof RevisionableStorageInterface) {
@@ -116,7 +116,6 @@ class PageService {
       throw new InvalidContextException($e->getMessage(), $e->getCode(), $e);
     }
   }
-
 
   /**
    * Upcasts an entity revision parameter.

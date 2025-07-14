@@ -88,7 +88,7 @@ final class AjaxBlockRender extends ControllerBase {
     assert($block instanceof ContextAwarePluginInterface);
     $build = $this->renderAsBlock($block, $placement_id);
     $context = new RenderContext();
-    $html = $this->renderer->executeInRenderContext($context, function() use ($build) {
+    $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
       return $this->renderer->render($build);
     });
 
@@ -178,13 +178,12 @@ final class AjaxBlockRender extends ControllerBase {
    * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
   protected function createBlockPluginInstance(string $plugin_id, array $configuration, array $context_values): BlockPluginInterface {
-    $block_manager = \Drupal::service('plugin.manager.block');
-    assert($block_manager instanceof BlockManagerInterface);
-    $block = $block_manager->createInstance($plugin_id, $configuration);
+    $block = $this->blockManager->createInstance($plugin_id, $configuration);
     assert($block instanceof ContextAwarePluginInterface);
     foreach ($context_values as $key => $context_value) {
       $block->setContextValue($key, $context_value);
     }
+    assert($block instanceof BlockPluginInterface);
     return $block;
   }
 
@@ -232,7 +231,7 @@ final class AjaxBlockRender extends ControllerBase {
           ->getStorage($entity_type_id)
           ->load($data_value);
       }
-      catch (InvalidPluginDefinitionException|PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {

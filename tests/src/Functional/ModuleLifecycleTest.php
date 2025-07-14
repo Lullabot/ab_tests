@@ -110,7 +110,10 @@ class ModuleLifecycleTest extends BrowserTestBase {
     $this->assertFalse($module_handler->moduleExists('ab_variant_decider_view_mode_timeout'), 'AB Variant Decider Timeout module is not yet enabled.');
 
     // Enable the example modules.
-    \Drupal::service('module_installer')->install(['ab_analytics_tracker_example', 'ab_variant_decider_view_mode_timeout']);
+    \Drupal::service('module_installer')->install([
+      'ab_analytics_tracker_example',
+      'ab_variant_decider_view_mode_timeout',
+    ]);
     $this->rebuildContainer();
 
     // Verify that the example modules are now enabled.
@@ -119,7 +122,10 @@ class ModuleLifecycleTest extends BrowserTestBase {
     $this->assertTrue($module_handler->moduleExists('ab_variant_decider_view_mode_timeout'), 'AB Variant Decider Timeout module is now enabled.');
 
     // Uninstall the example modules.
-    \Drupal::service('module_installer')->uninstall(['ab_analytics_tracker_example', 'ab_variant_decider_view_mode_timeout']);
+    \Drupal::service('module_installer')->uninstall([
+      'ab_analytics_tracker_example',
+      'ab_variant_decider_view_mode_timeout',
+    ]);
     $this->rebuildContainer();
 
     // Verify that the example modules are now disabled.
