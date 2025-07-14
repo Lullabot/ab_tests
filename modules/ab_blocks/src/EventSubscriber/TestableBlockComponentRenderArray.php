@@ -9,18 +9,16 @@ use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\Component\Plugin\ContextAwarePluginInterface;
 use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
-use Drupal\Component\Plugin\Factory\FactoryInterface;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\TypedData\PrimitiveInterface;
-use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
 use Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray;
 use Drupal\layout_builder\LayoutBuilderEvents;
-use Drupal\ph_tools\PageService;
+use Drupal\ab_tests\PageService;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -33,10 +31,12 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
    *
    * @param \Drupal\Core\Routing\RouteMatchInterface $routeMatch
    *   The route match.
-   * @param \Drupal\ph_tools\PageService $pageService
+   * @param \Drupal\ab_tests\PageService $pageService
    *   The page service.
    * @param \Drupal\ab_tests\AbVariantDeciderPluginManager $variantDeciderManager
    *   The plugin manager.
+   * @param \Drupal\ab_tests\AbAnalyticsPluginManager $analyticsManager
+   *   The analytics manager.
    */
   public function __construct(
     protected RouteMatchInterface $routeMatch,
@@ -72,7 +72,8 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
     $section_component = $event->getComponent();
     $settings = $section_component->get('additional')['ab_tests'] ?? [];
-    $settings['debug'] = \Drupal::config('ab_tests.settings')->get('debug_mode');
+    $settings['debug'] = \Drupal::config('ab_tests.settings')
+      ->get('debug_mode');
     // If we are in the Layout Builder interface, or there is no A/B test, then
     // abort.
     if (
@@ -115,7 +116,8 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     $placement_id = $section_component->getUuid();
     $original_build = $event->getBuild();
     $build = [
-      '#weight' => $original_build['#weight'] ?? $event->getComponent()->getWeight() ?? 99,
+      '#weight' => $original_build['#weight'] ?? $event->getComponent()
+          ->getWeight() ?? 99,
       [
         'content' => [
           '#type' => 'container',
@@ -182,12 +184,16 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
 
     // IMPORTANT NOTE: This module currently only works for nodes.
-    $root_node = \Drupal::service(PageService::class)->getNodeFromCurrentRoute();
+    $root_node = \Drupal::service(PageService::class)
+      ->getNodeFromCurrentRoute();
     // Deal with a core bug that won't bubble up attachments correctly.
     $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build[0]['content']['ab_tests_decider'] = $decider_build;
     $classes = $build[0]['content']['#attributes']['class'] ?? [];
-    $build[0]['content']['#attributes']['class'] = [...$classes, 'ab-test-loading'];
+    $build[0]['content']['#attributes']['class'] = [
+      ...$classes,
+      'ab-test-loading',
+    ];
     unset($build[0]['content']['ab_tests_decider']['#attached']);
     // Calculate the Drupal settings using the selected decider.
     $drupal_settings = [];

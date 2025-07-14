@@ -96,6 +96,6 @@ abstract class TimeoutAbDeciderBase extends AbVariantDeciderPluginBase {
    * @return array
    *   The form.
    */
-  protected abstract function timeoutVariantSettingsForm(): array;
+  abstract protected function timeoutVariantSettingsForm(): array;
 
 }

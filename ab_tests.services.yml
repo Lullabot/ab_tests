@@ -21,3 +21,5 @@ services:
       - '@config.factory'
     tags:
       - { name: event_subscriber }
+  Drupal\ab_tests\PageService:
+    autowire: true

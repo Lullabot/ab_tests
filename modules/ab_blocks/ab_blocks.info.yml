@@ -6,4 +6,3 @@ core_version_requirement: ^10 || ^11
 dependencies:
   - drupal:text
   - ab_tests:ab_tests
-  - ph_tools:ph_tools
