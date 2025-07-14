@@ -29,4 +29,12 @@ class ViewModeDecisionHandler extends BaseDecisionHandler {
     });
   }
 
+  /**
+   * @inheritDoc
+   */
+  _decisionChangesNothing(element, decision) {
+    const defaultDecisionValue = this.settings.defaultDecisionValue;
+    return typeof defaultDecisionValue !== 'undefined' && decision.decisionValue === defaultDecisionValue;
+  }
+
 }

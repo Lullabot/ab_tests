@@ -143,4 +143,102 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     return btoa(binString);
   }
 
+  /**
+   * @inheritDoc
+   */
+  _decisionChangesNothing(element, decision) {
+    // If the combined settings before and after the decision are the same, then
+    // the decision didn't change anything.
+    // IMPORTANT: The variant decider should return JSON stringified data.
+    const placementId = element.getAttribute('data-ab-blocks-placement-id');
+    if (!placementId) {
+      throw new Error('[A/B Blocks] Unable to find block metadata for a block without a placement ID.');
+    }
+    const { blockSettings } = this.settings?.blocks?.[placementId];
+    let parsedDecisionValue = {};
+    try {
+      parsedDecisionValue = JSON.parse(decision.decisionValue);
+    }
+    catch (e) {
+      this.debug && console.error(`[A/B Blocks] Unable to parse the decision value. Variant deciders should return JSON encoded strings. Received:`, decision.decisionValue);
+    }
+    const combinedSettings = Object.assign(
+      {},
+      blockSettings,
+      parsedDecisionValue,
+    );
+    // Return true if blockSettings and combinedSettings are the same with a
+    // deep comparison.
+    return this._deepEqual(blockSettings, combinedSettings);
+  }
+
+  /**
+   * Performs a deep comparison of two objects.
+   *
+   * Compares two objects recursively, checking all nested properties and values.
+   * The comparison is order-independent for object keys.
+   *
+   * @param {*} obj1
+   *   The first object to compare.
+   * @param {*} obj2
+   *   The second object to compare.
+   *
+   * @returns {boolean}
+   *   True if the objects are deeply equal, false otherwise.
+   *
+   * @private
+   */
+  _deepEqual(obj1, obj2) {
+    // Check strict equality first (handles primitives, null, undefined, same
+    // reference).
+    if (obj1 === obj2) {
+      return true;
+    }
+
+    // Check if either is null or undefined.
+    if (obj1 == null || obj2 == null) {
+      return obj1 === obj2;
+    }
+
+    // Check if types are different.
+    if (typeof obj1 !== typeof obj2) {
+      return false;
+    }
+
+    // Handle arrays.
+    if (Array.isArray(obj1)) {
+      if (!Array.isArray(obj2) || obj1.length !== obj2.length) {
+        return false;
+      }
+      for (let i = 0; i < obj1.length; i++) {
+        if (!this._deepEqual(obj1[i], obj2[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // Handle objects.
+    if (typeof obj1 === 'object') {
+      const keys1 = Object.keys(obj1);
+      const keys2 = Object.keys(obj2);
+
+      // Check if they have the same number of keys.
+      if (keys1.length !== keys2.length) {
+        return false;
+      }
+
+      // Check if all keys and values match.
+      for (const key of keys1) {
+        if (!keys2.includes(key) || !this._deepEqual(obj1[key], obj2[key])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    // For primitives that aren't strictly equal.
+    return false;
+  }
+
 }

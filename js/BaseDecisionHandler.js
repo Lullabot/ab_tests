@@ -10,7 +10,7 @@ class BaseDecisionHandler {
   eventName = 'abTestFinished';
 
   /**
-   * Constructs a new BaseAction instance.
+   * Constructs a new BaseDecisionHandler instance.
    */
   constructor(settings, hideLoadingSkeleton, debug) {
     this.settings = settings;
@@ -95,8 +95,7 @@ class BaseDecisionHandler {
    *   The decision object.
    */
   async handleDecision(element, decision) {
-    const defaultDecisionValue = this.settings.defaultDecisionValue;
-    if (typeof defaultDecisionValue !== 'undefined' && decision.decisionValue === defaultDecisionValue) {
+    if (this._decisionChangesNothing(element, decision)) {
       this.hideLoadingSkeleton(element, this.debug);
     } else {
       try {
@@ -109,6 +108,23 @@ class BaseDecisionHandler {
 
     // Dispatch decision event.
     this._dispatchCustomEvent(element, decision);
+  }
+
+  /**
+   * Determines if the decision is the same that the server pre-rendered.
+   *
+   * @param {HTMLElement} element
+   *   The element under test.
+   * @param {Decision} decision
+   *   The decision.
+   *
+   * @return {boolean}
+   *   True if we don't need to pre-render. False if we do.
+   *
+   * @protected
+   */
+  _decisionChangesNothing(element, decision) {
+    return false;
   }
 
   /**
