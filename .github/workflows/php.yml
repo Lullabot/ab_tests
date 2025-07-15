@@ -62,19 +62,15 @@ jobs:
 
       - name: Install Drupal core dependencies
         run: |
-          composer --no-interaction --no-progress --prefer-dist --optimize-autoloader install
-#
-#      - name: Install module dependencies
-#        run: |
-#          composer --no-interaction --no-progress require drupal/my-dependeny
+          composer --no-interaction --no-progress --prefer-dist install
 
-      - name: Install Coder module
+      - name: Install module dev-dependencies
         run: |
-          composer --dev --no-interaction --no-progress require drupal/coder:^8
+          composer --working-dir=moduls/ab_tests --dev --no-interaction --no-progress install
 
       - name: Check coding standards
         run: |
-          ./vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install modules/ab_tests
+          composer --working-dir=moduls/ab_tests run lint:check
 
       - name: Setup web server
         run: |

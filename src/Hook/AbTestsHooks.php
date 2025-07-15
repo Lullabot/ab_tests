@@ -228,7 +228,7 @@ class AbTestsHooks {
    *
    * Sets the 'page' variable to TRUE when re-rendering the node via Ajax.
    */
-  #[Hook('hook_preprocess_node')]
+  #[Hook('preprocess_node')]
   public function preprocessNode(&$variables): void {
     $route_name = $this->requestStack->getCurrentRequest()
       ->get(RouteObjectInterface::ROUTE_NAME);
