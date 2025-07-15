@@ -11,9 +11,12 @@
       "Bash(npm run format:check:*)",
       "Bash(npm run test:js:*)",
       "Bash(npm run:*)",
-      "Bash(composer require *)",
+      "Bash(composer require:*)",
       "Bash(composer install)",
-      "Bash(composer remove *)"
+      "Bash(composer remove:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
