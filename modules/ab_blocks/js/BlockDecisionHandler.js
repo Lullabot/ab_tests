@@ -1,15 +1,9 @@
-'use strict';
-
 class BlockDecisionHandler extends BaseDecisionHandler {
-
   /**
    * @inheritDoc
    */
   async _loadVariant(element, decision) {
-    const blockMetadata = this._enhanceBlockMetadata(
-      element,
-      decision,
-    );
+    const blockMetadata = this._enhanceBlockMetadata(element, decision);
     const {
       pluginId,
       placementId,
@@ -23,16 +17,21 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     if (!variantBlockSettings) {
       throw new Error('Unable to find block settings in the decision.');
     }
-    const combinedSettings = Object.assign(
-      {},
-      blockSettings,
-      variantBlockSettings,
-    );
+    const combinedSettings = {
+      ...blockSettings,
+      ...variantBlockSettings,
+    };
     if (combinedSettings?.hide_block) {
       // This is a small performance optimization, if we need to hide the
       // block, then we can skip the call to get the test group
       // recommendations.
-      this._hideBlock(targetHtmlId, placementId, variantBlockSettings, deciderMeta, contextMetadata);
+      this._hideBlock(
+        targetHtmlId,
+        placementId,
+        variantBlockSettings,
+        deciderMeta,
+        contextMetadata,
+      );
       return;
     }
 
@@ -46,9 +45,17 @@ class BlockDecisionHandler extends BaseDecisionHandler {
       wrapper: targetHtmlId,
     });
     await new Promise((resolve, reject) => {
-      abBlockLoader.execute()
+      abBlockLoader
+        .execute()
         .then(response => {
-          this.debug && console.debug('[A/B Tests]', 'The block was rendered with the new settings.', combinedSettings, pluginId, placementId);
+          this.debug &&
+            console.debug(
+              '[A/B Tests]',
+              'The block was rendered with the new settings.',
+              combinedSettings,
+              pluginId,
+              placementId,
+            );
           this.status = 'success';
           return response;
         })
@@ -77,7 +84,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @param {Decision} decision
    *   The decision value.
    *
-   * @returns {Object}
+   * @return {Object}
    *   The block metadata.
    *
    * @private
@@ -85,11 +92,15 @@ class BlockDecisionHandler extends BaseDecisionHandler {
   _enhanceBlockMetadata(element, decision) {
     const placementId = element.getAttribute('data-ab-blocks-placement-id');
     if (!placementId) {
-      throw new Error('[A/B Blocks] Unable to find block metadata for a block without a placement ID.');
+      throw new Error(
+        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
+      );
     }
     const blockMetadata = this.settings?.blocks?.[placementId];
     if (!blockMetadata) {
-      throw new Error(`[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`);
+      throw new Error(
+        `[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`,
+      );
     }
     // If the HTML element does not have an ID, generate one and store it in the
     // block metadata object.
@@ -102,15 +113,23 @@ class BlockDecisionHandler extends BaseDecisionHandler {
       blockMetadata.targetHtmlId = `ab-testable-block--${randomString}`;
       element.setAttribute('id', blockMetadata.targetHtmlId);
     }
-    this.debug && console.debug('[A/B Blocks] Block detected with an active experiment.', element, blockMetadata);
+    this.debug &&
+      console.debug(
+        '[A/B Blocks] Block detected with an active experiment.',
+        element,
+        blockMetadata,
+      );
 
     // IMPORTANT: The variant decider should return JSON stringified data.
     let parsedDecisionValue = {};
     try {
       parsedDecisionValue = JSON.parse(decision.decisionValue);
-    }
-    catch (e) {
-      this.debug && console.error(`[A/B Blocks] Unable to parse the decision value. Variant deciders should return JSON encoded strings. Received:`, decision.decisionValue);
+    } catch (e) {
+      this.debug &&
+        console.error(
+          `[A/B Blocks] Unable to parse the decision value. Variant deciders should return JSON encoded strings. Received:`,
+          decision.decisionValue,
+        );
     }
     blockMetadata.variantBlockSettings = parsedDecisionValue;
     blockMetadata.deciderMeta = decision.decisionData;
@@ -124,10 +143,21 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    *
    * @private
    */
-  _hideBlock(targetHtmlId, placementId, variantBlockSettings, deciderMeta, contextMetadata) {
-    this.debug && console.debug('[A/B Blocks] Block successfully hidden.', {
-      flagMeta,
-    });
+  _hideBlock(
+    targetHtmlId,
+    placementId,
+    variantBlockSettings,
+    deciderMeta,
+    contextMetadata,
+  ) {
+    this.debug &&
+      console.debug('[A/B Blocks] Block successfully hidden.', {
+        targetHtmlId,
+        placementId,
+        variantBlockSettings,
+        deciderMeta,
+        contextMetadata,
+      });
     document.getElementById(targetHtmlId).remove();
   }
 
@@ -137,9 +167,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @private
    */
   _bytesToBase64(bytes) {
-    const binString = Array.from(bytes, (x) => String.fromCodePoint(x)).join(
-      '',
-    );
+    const binString = Array.from(bytes, x => String.fromCodePoint(x)).join('');
     return btoa(binString);
   }
 
@@ -152,21 +180,31 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     // IMPORTANT: The variant decider should return JSON stringified data.
     const placementId = element.getAttribute('data-ab-blocks-placement-id');
     if (!placementId) {
-      throw new Error('[A/B Blocks] Unable to find block metadata for a block without a placement ID.');
+      throw new Error(
+        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
+      );
     }
-    const { blockSettings } = this.settings?.blocks?.[placementId];
+    const blockMetadata = this.settings?.blocks?.[placementId];
+    if (!blockMetadata) {
+      throw new Error(
+        `[A/B Blocks] Unable to find block metadata for placement ID: ${placementId}`,
+      );
+    }
+    const { blockSettings } = blockMetadata;
     let parsedDecisionValue = {};
     try {
       parsedDecisionValue = JSON.parse(decision.decisionValue);
+    } catch (e) {
+      this.debug &&
+        console.error(
+          `[A/B Blocks] Unable to parse the decision value. Variant deciders should return JSON encoded strings. Received:`,
+          decision.decisionValue,
+        );
     }
-    catch (e) {
-      this.debug && console.error(`[A/B Blocks] Unable to parse the decision value. Variant deciders should return JSON encoded strings. Received:`, decision.decisionValue);
-    }
-    const combinedSettings = Object.assign(
-      {},
-      blockSettings,
-      parsedDecisionValue,
-    );
+    const combinedSettings = {
+      ...blockSettings,
+      ...parsedDecisionValue,
+    };
     // Return true if blockSettings and combinedSettings are the same with a
     // deep comparison.
     return this._deepEqual(blockSettings, combinedSettings);
@@ -183,7 +221,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @param {*} obj2
    *   The second object to compare.
    *
-   * @returns {boolean}
+   * @return {boolean}
    *   True if the objects are deeply equal, false otherwise.
    *
    * @private
@@ -229,16 +267,12 @@ class BlockDecisionHandler extends BaseDecisionHandler {
       }
 
       // Check if all keys and values match.
-      for (const key of keys1) {
-        if (!keys2.includes(key) || !this._deepEqual(obj1[key], obj2[key])) {
-          return false;
-        }
-      }
-      return true;
+      return keys1.every(
+        key => keys2.includes(key) && this._deepEqual(obj1[key], obj2[key]),
+      );
     }
 
     // For primitives that aren't strictly equal.
     return false;
   }
-
 }

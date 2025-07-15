@@ -1,18 +1,14 @@
-'use strict';
-
 /**
  * Base class for A/B test actions.
  *
  * @abstract
  */
 class BaseDecisionHandler {
-
-  eventName = 'abTestFinished';
-
   /**
    * Constructs a new BaseDecisionHandler instance.
    */
   constructor(settings, hideLoadingSkeleton, debug) {
+    this.eventName = 'abTestFinished';
     this.settings = settings;
     this.debug = debug;
     // Initial status is 'idle'.
@@ -34,7 +30,7 @@ class BaseDecisionHandler {
   /**
    * Gets the status of the tracker.
    *
-   * @returns {string}
+   * @return {string}
    *   The status.
    */
   getStatus() {
@@ -44,7 +40,7 @@ class BaseDecisionHandler {
   /**
    * Returns the error object.
    *
-   * @returns {Object|null}
+   * @return {Object|null}
    *   The error object, or null if no error.
    */
   getError() {
@@ -80,7 +76,12 @@ class BaseDecisionHandler {
   onError(error) {
     this.setStatus('error');
     this.error = error;
-    this.debug && console.error('[A/B Tests]', 'There was an error during the A/B test.', error);
+    this.debug &&
+      console.error(
+        '[A/B Tests]',
+        'There was an error during the A/B test.',
+        error,
+      );
   }
 
   /**
@@ -100,8 +101,7 @@ class BaseDecisionHandler {
     } else {
       try {
         await this._loadVariant(element, decision);
-      }
-      catch (error) {
+      } catch (error) {
         this._handleError(error, element, decision);
       }
     }
@@ -145,7 +145,12 @@ class BaseDecisionHandler {
     event.detail.status = this.status;
     event.detail.settings = this.settings;
     event.detail.error = this.error;
-    this.debug && console.debug('[A/B Tests]', 'Dispatching event after processing the new content.', event);
+    this.debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Dispatching event after processing the new content.',
+        event,
+      );
     document.dispatchEvent(event);
     this.debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
   }
@@ -161,7 +166,7 @@ class BaseDecisionHandler {
    * @param {Decision} decision
    *   The decision value.
    *
-   * @returns {Promise}
+   * @return {Promise}
    *   Resolves when the variant is loaded.
    *
    * @private
@@ -169,7 +174,10 @@ class BaseDecisionHandler {
   async _loadVariant(element, decision) {
     return new Promise(resolve => {
       setTimeout(() => {
-        this.debug && console.debug('[A/B Tests] A new empty variant was loaded. IMPORTANT: You need to override this method.');
+        this.debug &&
+          console.debug(
+            '[A/B Tests] A new empty variant was loaded. IMPORTANT: You need to override this method.',
+          );
         resolve('');
       }, 1);
     });
@@ -189,9 +197,13 @@ class BaseDecisionHandler {
    */
   _handleError(error, element, decision) {
     this.error = true;
-    this.debug && console.debug(`[A/B Tests] There was an error loading the new variant after the decision`, error, decision);
+    this.debug &&
+      console.debug(
+        `[A/B Tests] There was an error loading the new variant after the decision`,
+        error,
+        decision,
+      );
     // Show the loading default server-rendered variant.
     this.hideLoadingSkeleton(element, this.debug);
   }
-
 }

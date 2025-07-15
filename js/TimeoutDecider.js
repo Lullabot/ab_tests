@@ -1,10 +1,7 @@
-'use strict';
-
 /**
  * Implements a timeout-based A/B test decider.
  */
 class TimeoutDecider extends BaseDecider {
-
   /**
    * Constructs a new TimeoutDecider instance.
    *
@@ -28,22 +25,23 @@ class TimeoutDecider extends BaseDecider {
    * @inheritDoc
    */
   decide(element) {
-    return new Promise((resolve) => {
-      const duration = Math.floor(Math.random() * (this.maxTimeout - this.minTimeout)) + this.minTimeout;
+    return new Promise(resolve => {
+      const duration =
+        Math.floor(Math.random() * (this.maxTimeout - this.minTimeout)) +
+        this.minTimeout;
       const randomIndex = Math.floor(Math.random() * this.variants.length);
       const variantSettings = this.variants[randomIndex];
       const decisionId = this.generateDecisionId();
-      this.getDebug() && console.debug('[A/B Tests]', duration, variantSettings, decisionId);
+      this.getDebug() &&
+        console.debug('[A/B Tests]', duration, variantSettings, decisionId);
 
       setTimeout(() => {
-        resolve(new Decision(
-          decisionId,
-          variantSettings,
-          {
+        resolve(
+          new Decision(decisionId, variantSettings, {
             timeout: duration,
             deciderId: 'timeout',
-          },
-        ));
+          }),
+        );
       }, duration);
     });
   }

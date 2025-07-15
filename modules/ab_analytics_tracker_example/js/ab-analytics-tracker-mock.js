@@ -1,6 +1,4 @@
 ((Drupal, once) => {
-  'use strict';
-
   /**
    * Behavior to initialize timeout tracker.
    */
@@ -8,15 +6,17 @@
     async attach(context, { ab_tests: { analyticsSettings, debug } }) {
       if (
         context instanceof Document ||
-        !context.hasAttribute('data-ab-tests-decision')) {
+        !context.hasAttribute('data-ab-tests-decision')
+      ) {
         return;
       }
       const abTestsManager = new AbTestsManager();
       const apiKey = analyticsSettings?.apiKey || '';
-      const config = { trackingDomain: analyticsSettings?.trackingDomain || '' };
+      const config = {
+        trackingDomain: analyticsSettings?.trackingDomain || '',
+      };
       const tracker = new MockTracker(apiKey, config);
       await abTestsManager.registerTracker(context, tracker, debug);
     },
   };
-
 })(Drupal, once);

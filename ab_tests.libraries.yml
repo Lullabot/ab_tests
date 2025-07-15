@@ -29,13 +29,6 @@ ab_analytics_tracker.null:
     - core/once
     - ab_tests/ab_tests
 
-analytics:
-  js:
-    js/analytics.js: { }
-  dependencies:
-    - core/drupal
-    - core/drupalSettings
-
 ab_variant_decider.timeout:
   js:
     js/ab-variant-decider-timeout.js: { }

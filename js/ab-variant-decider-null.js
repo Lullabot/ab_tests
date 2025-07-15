@@ -1,6 +1,4 @@
 ((Drupal, once) => {
-  'use strict';
-
   /**
    * Behavior to initialize timeout decider.
    */
@@ -8,16 +6,17 @@
     attach(context, settings) {
       const abTestsSettings = settings?.ab_tests || {};
       const { deciderSettings, debug = false } = abTestsSettings;
-      
-      if (!deciderSettings?.experimentsSelector) {
+
+      let actualDeciderSettings = deciderSettings;
+      if (!actualDeciderSettings?.experimentsSelector) {
         // Fallback selector if not configured
         const fallbackSelector = '[data-ab-tests-decider-status="idle"]';
-        deciderSettings = { experimentsSelector: fallbackSelector };
+        actualDeciderSettings = { experimentsSelector: fallbackSelector };
       }
-      
+
       const elements = once(
         'ab-variant-decider-null',
-        deciderSettings.experimentsSelector,
+        actualDeciderSettings.experimentsSelector,
         context,
       );
 
@@ -38,5 +37,4 @@
       });
     },
   };
-
 })(Drupal, once);

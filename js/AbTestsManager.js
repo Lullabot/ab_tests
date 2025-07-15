@@ -1,10 +1,7 @@
-'use strict'
-
 /**
  * Manages A/B test decisions and variant switching.
  */
 class AbTestsManager {
-
   /**
    * Registers a decider for a specific test.
    *
@@ -17,15 +14,10 @@ class AbTestsManager {
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
-   * @returns {Promise<Decision>}
+   * @return {Promise<Decision>}
    *   Resolves with the decision once made.
    */
-  registerDecider(
-    element,
-    decider,
-    settings,
-    debug = false,
-  ) {
+  registerDecider(element, decider, settings, debug = false) {
     const status = 'pending';
     decider.setStatus(status);
     decider.setDebug(debug);
@@ -40,7 +32,7 @@ class AbTestsManager {
     // data-ab-tests-feature="ab_view_modes/ab_blocks/ab_entity/...". With
     // this, we can call the decision handler factory to take care of each
     // element in the page (if more than one).
-    const decisionHandler = (new DecisionHandlerFactory()).createInstance(
+    const decisionHandler = new DecisionHandlerFactory().createInstance(
       element.getAttribute('data-ab-tests-feature'),
       settings,
       debug,
@@ -48,12 +40,7 @@ class AbTestsManager {
     );
 
     // Start the decision process.
-    return this._makeDecision(
-      element,
-      decider,
-      decisionHandler,
-      debug,
-    );
+    return this._makeDecision(element, decider, decisionHandler, debug);
   }
 
   /**
@@ -66,7 +53,7 @@ class AbTestsManager {
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
-   * @returns {Promise<Decision>}
+   * @return {Promise<Decision>}
    *   Resolves with the decision once made.
    */
   async registerTracker(element, tracker, debug = false) {
@@ -100,22 +87,18 @@ class AbTestsManager {
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
-   * @returns {Promise<Decision>}
+   * @return {Promise<Decision>}
    *   Resolves with the decision once made.
    */
-  async _makeDecision(
-    element,
-    decider,
-    decisionHandler,
-    debug,
-  ) {
+  async _makeDecision(element, decider, decisionHandler, debug) {
     let status = 'pending';
     let decision = null;
     try {
       debug && console.debug('[A/B Tests]', 'A decision is about to be made.');
       decision = await decider.decide(element);
       status = 'success';
-      debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
+      debug &&
+        console.debug('[A/B Tests]', 'A decision was reached.', decision);
       await decisionHandler.handleDecision(element, decision);
     } catch (error) {
       status = 'error';
@@ -145,7 +128,7 @@ class AbTestsManager {
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
-   * @returns {Promise<Decision>}
+   * @return {Promise<Decision>}
    *   Resolves with the tracking made.
    */
   async _doTrack(element, { tracker, decision }, debug) {
@@ -170,5 +153,4 @@ class AbTestsManager {
     debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
     element.classList.remove('ab-test-loading');
   }
-
 }

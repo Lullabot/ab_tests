@@ -1,10 +1,7 @@
-'use strict';
-
 /**
  * Represents an A/B test decision.
  */
 class Decision {
-
   /**
    * Constructs a new Decision instance.
    *
@@ -21,5 +18,4 @@ class Decision {
     this.decisionValue = `${decisionValue}`;
     this.decisionData = decisionData;
   }
-
 }
