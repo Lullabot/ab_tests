@@ -1,6 +1,12 @@
 ((document, Drupal, drupalSettings) => {
   /**
    * Show loading skeleton.
+   *
+   * @param {boolean} debug
+   *   Whether debug mode is enabled.
+   *
+   * @return {Function}
+   *   Function that accepts an element to show loading skeleton on.
    */
   const showLoadingSkeleton = debug => element => {
     debug &&

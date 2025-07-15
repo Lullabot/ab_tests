@@ -148,6 +148,11 @@ class AbTestsManager {
 
   /**
    * Show the default variant.
+   *
+   * @param {HTMLElement} element
+   *   The HTML element to remove loading state from.
+   * @param {boolean} debug
+   *   Whether debug mode is enabled.
    */
   hideLoadingSkeleton(element, debug) {
     debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');

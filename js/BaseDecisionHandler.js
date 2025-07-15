@@ -6,6 +6,13 @@
 class BaseDecisionHandler {
   /**
    * Constructs a new BaseDecisionHandler instance.
+   *
+   * @param {Object} settings
+   *   The drupalSettings object.
+   * @param {Function} hideLoadingSkeleton
+   *   Function to hide loading skeleton.
+   * @param {boolean} debug
+   *   Whether debug mode is enabled.
    */
   constructor(settings, hideLoadingSkeleton, debug) {
     this.eventName = 'abTestFinished';
@@ -132,6 +139,11 @@ class BaseDecisionHandler {
    *
    * This will be used by other parts of the application to subscribe to the
    * results of the test.
+   *
+   * @param {HTMLElement} element
+   *   The element under test.
+   * @param {Decision} decision
+   *   The decision object.
    *
    * @protected
    */

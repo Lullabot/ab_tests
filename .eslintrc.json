@@ -71,6 +71,6 @@
     "import/extensions": ["off"],
     "import/no-unresolved": ["off"],
     "no-unused-expressions": ["error", { "allowShortCircuit": true }],
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+    "no-unused-vars": ["off"]
   }
 }

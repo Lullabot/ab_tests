@@ -79,7 +79,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * the server-stored block settings. This way the block can render
    * differently.
    *
-   * @param element
+   * @param {HTMLElement} element
    *   The HTML element for the block under test.
    * @param {Decision} decision
    *   The decision value.
@@ -141,6 +141,17 @@ class BlockDecisionHandler extends BaseDecisionHandler {
   /**
    * Hides the block without having to re-render it.
    *
+   * @param {string} targetHtmlId
+   *   The HTML ID of the target element.
+   * @param {string} placementId
+   *   The placement ID of the block.
+   * @param {Object} variantBlockSettings
+   *   The variant block settings.
+   * @param {Object} deciderMeta
+   *   The decider metadata.
+   * @param {Object} contextMetadata
+   *   The context metadata.
+   *
    * @private
    */
   _hideBlock(
@@ -163,6 +174,12 @@ class BlockDecisionHandler extends BaseDecisionHandler {
 
   /**
    * Converts JS data to a base64-string.
+   *
+   * @param {Uint8Array} bytes
+   *   The bytes to convert.
+   *
+   * @return {string}
+   *   The base64-encoded string.
    *
    * @private
    */
