@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use Drupal\Component\Serialization\Json;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the A/B Tests controller functionality.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**

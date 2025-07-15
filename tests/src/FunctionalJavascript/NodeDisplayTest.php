@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
+use PHPUnit\Framework\Attributes\Group;
+
 /**
  * Tests the node display with A/B testing enabled.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class NodeDisplayTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**

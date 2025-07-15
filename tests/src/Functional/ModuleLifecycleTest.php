@@ -6,12 +6,14 @@ namespace Drupal\Tests\ab_tests\Functional;
 
 use Drupal\Tests\ab_tests\AbTestsTestBaseTrait;
 use Drupal\Tests\BrowserTestBase;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the A/B Tests module lifecycle.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class ModuleLifecycleTest extends BrowserTestBase {
 
   use AbTestsTestBaseTrait;

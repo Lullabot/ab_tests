@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use Drupal\node\Entity\NodeType;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the plugin selection functionality.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**

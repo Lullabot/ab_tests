@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
+use PHPUnit\Framework\Attributes\Group;
+
 /**
  * Tests the timeout decider functionality.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class TimeoutDeciderTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**
