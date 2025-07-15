@@ -6,10 +6,18 @@
    */
   Drupal.behaviors.abVariantDeciderNull = {
     attach(context, settings) {
-      const { ab_tests: { deciderSettings, debug } } = settings;
+      const abTestsSettings = settings?.ab_tests || {};
+      const { deciderSettings, debug = false } = abTestsSettings;
+      
+      if (!deciderSettings?.experimentsSelector) {
+        // Fallback selector if not configured
+        const fallbackSelector = '[data-ab-tests-decider-status="idle"]';
+        deciderSettings = { experimentsSelector: fallbackSelector };
+      }
+      
       const elements = once(
         'ab-variant-decider-null',
-        deciderSettings?.experimentsSelector,
+        deciderSettings.experimentsSelector,
         context,
       );
 
@@ -24,7 +32,7 @@
         abTestsManager.registerDecider(
           element,
           decider,
-          settings.ab_tests || {},
+          abTestsSettings,
           debug,
         );
       });

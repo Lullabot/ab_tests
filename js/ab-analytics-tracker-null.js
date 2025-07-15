@@ -4,8 +4,11 @@
   /**
    * Behavior to initialize timeout decider.
    */
-  Drupal.behaviors.abVariantDeciderNull = {
-    async attach(context, { ab_tests: { debug } }) {
+  Drupal.behaviors.abAnalyticsTrackerNull = {
+    async attach(context, settings) {
+      const abTestsSettings = settings?.ab_tests || {};
+      const { debug = false } = abTestsSettings;
+      
       if (
         context instanceof Document ||
         !context.hasAttribute('data-ab-tests-decision')) {

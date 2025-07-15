@@ -110,23 +110,25 @@ class AbTestsManager {
     debug,
   ) {
     let status = 'pending';
+    let decision = null;
     try {
       debug && console.debug('[A/B Tests]', 'A decision is about to be made.');
-      const decision = await decider.decide(element);
+      decision = await decider.decide(element);
       status = 'success';
       debug && console.debug('[A/B Tests]', 'A decision was reached.', decision);
       await decisionHandler.handleDecision(element, decision);
-      return decision;
     } catch (error) {
       status = 'error';
       decider.onError(error);
       debug && console.error('[A/B Tests]', 'Decision failed:', error);
       // On error, show the default variant.
       this.hideLoadingSkeleton(element, debug);
+    } finally {
+      decider.setStatus(status);
+      // Set a data attribute to indicate the test is in progress.
+      element.setAttribute('data-ab-tests-decider-status', status);
     }
-    decider.setStatus(status);
-    // Set a data attribute to indicate the test is in progress.
-    element.setAttribute('data-ab-tests-decider-status', status);
+    return decision;
   }
 
   /**

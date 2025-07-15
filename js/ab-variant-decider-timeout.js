@@ -6,10 +6,16 @@
    */
   Drupal.behaviors.abVariantDeciderTimeout = {
     attach(context, settings) {
-      const { ab_tests: { deciderSettings, debug } } = settings;
+      const abTestsSettings = settings?.ab_tests || {};
+      const { deciderSettings, debug = false } = abTestsSettings;
+      
+      if (!deciderSettings?.experimentsSelector) {
+        return;
+      }
+      
       const elements = once(
         'ab-variant-decider-timeout',
-        deciderSettings?.experimentsSelector,
+        deciderSettings.experimentsSelector,
         context,
       );
 
@@ -26,9 +32,17 @@
           return;
         }
 
+        // Add validation for timeout configuration
+        const timeoutConfig = deciderSettings?.timeout || {};
+        if (typeof timeoutConfig.min !== 'number' || typeof timeoutConfig.max !== 'number') {
+          console.warn('[A/B Tests] Invalid timeout configuration, using defaults');
+          timeoutConfig.min = 1000;
+          timeoutConfig.max = 5000;
+        }
+
         const config = {
-          minTimeout: deciderSettings.timeout.min,
-          maxTimeout: deciderSettings.timeout.max,
+          minTimeout: timeoutConfig.min,
+          maxTimeout: timeoutConfig.max,
         };
 
         const decider = new TimeoutDecider(availableVariants, config);
@@ -36,7 +50,7 @@
         abTestsManager.registerDecider(
           element,
           decider,
-          settings.ab_tests || {},
+          abTestsSettings,
           debug,
         );
       });

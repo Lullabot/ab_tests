@@ -1,5 +1,11 @@
 'use strict';
 
+/**
+ * Factory class for creating decision handler instances based on A/B test features.
+ * 
+ * This factory creates the appropriate decision handler based on the feature type
+ * (e.g., ab_view_modes, ab_blocks) to handle variant rendering.
+ */
 class DecisionHandlerFactory {
 
   /**
@@ -11,6 +17,10 @@ class DecisionHandlerFactory {
    *   The drupalSettings.
    * @param {*[]} args
    *   The arguments to pass to the class constructor.
+   * @returns {BaseDecisionHandler}
+   *   The appropriate decision handler instance.
+   * @throws {Error}
+   *   If the feature type is unknown.
    */
   createInstance(feature, settings, ...args) {
     // Extract additional settings in drupalSetting.ab_blocks, ...
