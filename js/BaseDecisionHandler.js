@@ -15,7 +15,7 @@ class BaseDecisionHandler {
    *   Whether debug mode is enabled.
    */
   constructor(settings, hideLoadingSkeleton, debug) {
-    this.eventName = 'abTestFinished';
+    this.eventName = 'ab_tests:abTestFinished';
     this.settings = settings;
     this.debug = debug;
     // Initial status is 'idle'.
