@@ -11,7 +11,6 @@ class BaseTracker extends BaseAction {
    *   The promise of initialization.
    */
   initialize() {
-    const fun = ((e) => e);
     return Promise.resolve();
   }
 
