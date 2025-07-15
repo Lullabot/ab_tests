@@ -279,13 +279,17 @@ trait PluginSelectionFormTrait {
   /**
    * Gets the selected plugins from the form state for analytics plugins.
    *
+   * This method retrieves the selected plugin IDs from the form state, either
+   * from the triggering element during AJAX requests or from the submitted
+   * form values. It filters out empty values and returns only valid plugin IDs.
+   *
    * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state.
+   *   The form state containing the submitted values.
    * @param string $plugin_type
    *   The plugin type (e.g., 'analytics').
    *
    * @return array
-   *   Array of selected plugin IDs.
+   *   Array of selected plugin IDs, with empty values filtered out.
    */
   protected function getSelectedPluginsFromFormState(FormStateInterface $form_state, string $plugin_type): array {
     $triggering_element = $form_state->getTriggeringElement();
@@ -462,8 +466,7 @@ trait PluginSelectionFormTrait {
       }
 
       // Set validation limits before creating any plugin instances to avoid
-      // serialization issues.
-      // @todo do we actually need this???
+      // serialization issues and limit validation scope to this plugin only.
       $form_state->setLimitValidationErrors(
         [
           ['ab_tests', $plugin_type_id, 'config_wrapper', 'settings'],

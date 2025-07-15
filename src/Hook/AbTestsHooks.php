@@ -214,7 +214,6 @@ class AbTestsHooks {
       $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
       $build['#attached']['drupalSettings']['ab_tests']['defaultViewMode'] = $settings['default'] ?? 'default';
-      $build['ab_tests_tracker'] = $tracker_build;
       unset($build['ab_tests_tracker']['#attached']);
       return;
     }

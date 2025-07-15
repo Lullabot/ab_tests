@@ -2,15 +2,10 @@
 
 /**
  * @file
- * Module implementation file.
+ * Provides core functionality for the A/B Tests module.
  */
 
 declare(strict_types=1);
-
-/**
- * @file
- * Provides core functionality for the A/B Tests module.
- */
 
 use Drupal\ab_tests\Hook\AbTestsHooks;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
