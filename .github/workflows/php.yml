@@ -86,7 +86,7 @@ jobs:
             sleep 2
           done
           echo "Chrome service is ready"
-          
+
           # Wait for MySQL to be ready
           until mysql -h 127.0.0.1 -u root -proot -e "SELECT 1"; do
             echo "Waiting for MySQL service..."
@@ -112,4 +112,4 @@ jobs:
 
       - name: Run Functional JavaScript Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"w3c":false,"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"w3c":false,"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript --verbose
