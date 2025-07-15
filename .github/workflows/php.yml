@@ -51,7 +51,7 @@ jobs:
 
       - name: Get composer cache directory
         id: composercache
-        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache composer dependencies
         uses: actions/cache@v4
@@ -75,7 +75,7 @@ jobs:
       - name: Setup web server
         run: |
           php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
-          echo "::set-output name=pid::$!"
+          echo "pid=$!" >> $GITHUB_OUTPUT
         id: server
 
       - name: Install Drupal
