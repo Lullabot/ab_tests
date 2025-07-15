@@ -66,11 +66,11 @@ jobs:
 
       - name: Install module dev-dependencies
         run: |
-          composer --working-dir=moduls/ab_tests --dev --no-interaction --no-progress install
+          composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
 
       - name: Check coding standards
         run: |
-          composer --working-dir=moduls/ab_tests run lint:check
+          composer --working-dir=modules/ab_tests run lint:check
 
       - name: Setup web server
         run: |
