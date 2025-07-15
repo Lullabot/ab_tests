@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "WebFetch(domain:www.drupal.org)",
+      "WebFetch(domain:git.drupalcode.org)",
+      "Bash(npm install:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format:check:*)",
+      "Bash(npm run test:js:*)",
+      "Bash(npm run:*)"
+    ],
+    "deny": []
+  }
+}
