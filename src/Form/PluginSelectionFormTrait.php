@@ -96,32 +96,64 @@ trait PluginSelectionFormTrait {
         ],
       ],
     ];
-    // Get currently selected plugin, either from form_state or settings.
-    $selected_plugin_id = $this->getSelectedPluginFromFormState($form_state, $plugin_type)
-      ?? ($settings['id'] ?? 'null');
-
-    // List all plugins.
-    $plugins = $plugin_manager->getPlugins(
-      settings: [$selected_plugin_id => $settings['settings'] ?? []],
-    );
-
     $wrapper_id = sprintf('%s-config-wrapper', $plugin_type);
-    // Add the radio buttons with AJAX callback.
-    $form['ab_tests'][$plugin_type]['id'] = [
-      '#type' => 'radios',
-      '#title' => $plugin_manager->getPluginTypeLabel(),
-      '#options' => array_combine(
-        array_map(static fn(PluginInspectionInterface $plugin) => $plugin->getPluginId(), $plugins),
-        array_map($get_plugin_label, $plugins),
-      ),
-      '#default_value' => $selected_plugin_id,
-      '#required' => TRUE,
-      '#ajax' => [
-        'callback' => [$this, 'pluginSelectionAjaxCallback'],
-        'wrapper' => $wrapper_id,
-        'effect' => 'fade',
-      ],
-    ];
+    
+    // For analytics plugins, use checkboxes to allow multiple selection.
+    // For other plugins (like variants), use radio buttons for single selection.
+    if ($plugin_type === 'analytics') {
+      // Get currently selected plugins, either from form_state or settings.
+      $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
+        ?? $this->getSelectedPluginsFromSettings($settings);
+      
+      // List all plugins with settings for selected ones.
+      $plugin_settings = [];
+      foreach ($selected_plugin_ids as $plugin_id) {
+        $plugin_settings[$plugin_id] = $settings[$plugin_id]['settings'] ?? [];
+      }
+      $plugins = $plugin_manager->getPlugins(settings: $plugin_settings);
+      
+      // Add the checkboxes with AJAX callback.
+      $form['ab_tests'][$plugin_type]['id'] = [
+        '#type' => 'checkboxes',
+        '#title' => $plugin_manager->getPluginTypeLabel(),
+        '#options' => array_combine(
+          array_map(static fn(PluginInspectionInterface $plugin) => $plugin->getPluginId(), $plugins),
+          array_map($get_plugin_label, $plugins),
+        ),
+        '#default_value' => $selected_plugin_ids,
+        '#ajax' => [
+          'callback' => [$this, 'pluginSelectionAjaxCallback'],
+          'wrapper' => $wrapper_id,
+          'effect' => 'fade',
+        ],
+      ];
+    } else {
+      // Get currently selected plugin, either from form_state or settings.
+      $selected_plugin_id = $this->getSelectedPluginFromFormState($form_state, $plugin_type)
+        ?? ($settings['id'] ?? 'null');
+
+      // List all plugins.
+      $plugins = $plugin_manager->getPlugins(
+        settings: [$selected_plugin_id => $settings['settings'] ?? []],
+      );
+      
+      // Add the radio buttons with AJAX callback.
+      $form['ab_tests'][$plugin_type]['id'] = [
+        '#type' => 'radios',
+        '#title' => $plugin_manager->getPluginTypeLabel(),
+        '#options' => array_combine(
+          array_map(static fn(PluginInspectionInterface $plugin) => $plugin->getPluginId(), $plugins),
+          array_map($get_plugin_label, $plugins),
+        ),
+        '#default_value' => $selected_plugin_id,
+        '#required' => TRUE,
+        '#ajax' => [
+          'callback' => [$this, 'pluginSelectionAjaxCallback'],
+          'wrapper' => $wrapper_id,
+          'effect' => 'fade',
+        ],
+      ];
+    }
 
     // Add a wrapper div for the plugin configuration form.
     $form['ab_tests'][$plugin_type]['config_wrapper'] = [
@@ -131,20 +163,48 @@ trait PluginSelectionFormTrait {
       ],
     ];
 
-    // Only build the selected plugin's configuration form.
-    if (!empty($selected_plugin_id) && $selected_plugin_id !== 'null') {
-      $selected_plugins = array_filter(
-        $plugins,
-        static fn (PluginInspectionInterface $plugin) => $plugin->getPluginId() === $selected_plugin_id
-      );
-      $selected_plugin = reset($selected_plugins);
+    // Build configuration forms for selected plugins.
+    if ($plugin_type === 'analytics') {
+      // For analytics plugins, build multiple configuration forms.
+      $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
+        ?? $this->getSelectedPluginsFromSettings($settings);
+      
+      foreach ($selected_plugin_ids as $plugin_id) {
+        if (!empty($plugin_id) && $plugin_id !== 'null') {
+          $selected_plugins = array_filter(
+            $plugins,
+            static fn (PluginInspectionInterface $plugin) => $plugin->getPluginId() === $plugin_id
+          );
+          $selected_plugin = reset($selected_plugins);
 
-      if ($selected_plugin instanceof PluginFormInterface) {
-        $form['ab_tests'][$plugin_type]['config_wrapper']['settings'] = $this->buildPluginConfigurationForm(
-          $selected_plugin,
-          $form_state,
-          $this->t('- No configuration options available for this plugin -'),
+          if ($selected_plugin instanceof PluginFormInterface) {
+            $form['ab_tests'][$plugin_type]['config_wrapper'][$plugin_id . '_settings'] = $this->buildPluginConfigurationForm(
+              $selected_plugin,
+              $form_state,
+              $this->t('- No configuration options available for this plugin -'),
+            );
+          }
+        }
+      }
+    } else {
+      // For other plugins (like variants), build single configuration form.
+      $selected_plugin_id = $this->getSelectedPluginFromFormState($form_state, $plugin_type)
+        ?? ($settings['id'] ?? 'null');
+      
+      if (!empty($selected_plugin_id) && $selected_plugin_id !== 'null') {
+        $selected_plugins = array_filter(
+          $plugins,
+          static fn (PluginInspectionInterface $plugin) => $plugin->getPluginId() === $selected_plugin_id
         );
+        $selected_plugin = reset($selected_plugins);
+
+        if ($selected_plugin instanceof PluginFormInterface) {
+          $form['ab_tests'][$plugin_type]['config_wrapper']['settings'] = $this->buildPluginConfigurationForm(
+            $selected_plugin,
+            $form_state,
+            $this->t('- No configuration options available for this plugin -'),
+          );
+        }
       }
     }
   }
@@ -217,6 +277,66 @@ trait PluginSelectionFormTrait {
   }
 
   /**
+   * Gets the selected plugins from the form state for analytics plugins.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param string $plugin_type
+   *   The plugin type (e.g., 'analytics').
+   *
+   * @return array
+   *   Array of selected plugin IDs.
+   */
+  protected function getSelectedPluginsFromFormState(FormStateInterface $form_state, string $plugin_type): array {
+    $triggering_element = $form_state->getTriggeringElement();
+
+    // If this is an AJAX request and the triggering element is the plugin
+    // selector.
+    if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'id') {
+      $plugin_values = $form_state->getValue([
+        'ab_tests',
+        $plugin_type,
+        'id',
+      ]);
+      return array_filter($plugin_values ?? []);
+    }
+
+    // Try to get from values if the form has been submitted.
+    if ($form_state->hasValue(['ab_tests', $plugin_type, 'id'])) {
+      $plugin_values = $form_state->getValue(['ab_tests', $plugin_type, 'id']);
+      return array_filter($plugin_values ?? []);
+    }
+
+    return [];
+  }
+
+  /**
+   * Gets the selected plugins from settings for analytics plugins.
+   *
+   * @param array $settings
+   *   The settings array.
+   *
+   * @return array
+   *   Array of selected plugin IDs.
+   */
+  protected function getSelectedPluginsFromSettings(array $settings): array {
+    // Handle legacy single plugin format.
+    if (isset($settings['id'])) {
+      return [$settings['id']];
+    }
+
+    // Handle new multi-plugin format.
+    $selected_plugins = [];
+    foreach ($settings as $plugin_id => $plugin_config) {
+      if (is_array($plugin_config) && isset($plugin_config['id'])) {
+        $selected_plugins[] = $plugin_config['id'];
+      }
+    }
+
+    return $selected_plugins;
+  }
+
+  /**
    * Builds a plugin configuration form.
    *
    * @param \Drupal\Core\Plugin\PluginFormInterface $plugin
@@ -285,46 +405,93 @@ trait PluginSelectionFormTrait {
       return;
     }
 
-    $plugin_id = $form_state->getValue(['ab_tests', $plugin_type_id, 'id']);
-    if (!$plugin_id) {
-      return;
+    if ($plugin_type_id === 'analytics') {
+      // For analytics plugins, validate all selected plugins.
+      $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type_id);
+      
+      foreach ($selected_plugin_ids as $plugin_id) {
+        if (!$plugin_id) {
+          continue;
+        }
+
+        // Check if the form element exists before proceeding.
+        if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'])) {
+          continue;
+        }
+
+        // Set validation limits before creating any plugin instances to avoid
+        // serialization issues.
+        $form_state->setLimitValidationErrors(
+          [
+            ['ab_tests', $plugin_type_id, 'config_wrapper', $plugin_id . '_settings'],
+          ]
+        );
+
+        // Get plugin settings.
+        $plugin_settings = $form_state->getValue([
+          'ab_tests',
+          $plugin_type_id,
+          'config_wrapper',
+          $plugin_id . '_settings',
+        ]) ?? [];
+        $plugin = $plugin_manager->createInstance($plugin_id, $plugin_settings);
+
+        if (!$plugin instanceof PluginFormInterface) {
+          continue;
+        }
+
+        // Create a clean subform element to avoid serialization issues.
+        $element = $form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'];
+        $subform_state = SubformState::createForSubform($element, $form, $form_state);
+
+        $plugin->validateConfigurationForm(
+          $element,
+          $subform_state
+        );
+      }
+    } else {
+      // For other plugins (like variants), validate single plugin.
+      $plugin_id = $form_state->getValue(['ab_tests', $plugin_type_id, 'id']);
+      if (!$plugin_id) {
+        return;
+      }
+
+      // Check if the form element exists before proceeding.
+      if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'])) {
+        return;
+      }
+
+      // Set validation limits before creating any plugin instances to avoid
+      // serialization issues.
+      // @todo do we actually need this???
+      $form_state->setLimitValidationErrors(
+        [
+          ['ab_tests', $plugin_type_id, 'config_wrapper', 'settings'],
+        ]
+      );
+
+      // Get plugin settings.
+      $plugin_settings = $form_state->getValue([
+        'ab_tests',
+        $plugin_type_id,
+        'config_wrapper',
+        'settings',
+      ]) ?? [];
+      $plugin = $plugin_manager->createInstance($plugin_id, $plugin_settings);
+
+      if (!$plugin instanceof PluginFormInterface) {
+        return;
+      }
+
+      // Create a clean subform element to avoid serialization issues.
+      $element = $form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'];
+      $subform_state = SubformState::createForSubform($element, $form, $form_state);
+
+      $plugin->validateConfigurationForm(
+        $element,
+        $subform_state
+      );
     }
-
-    // Check if the form element exists before proceeding.
-    if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'])) {
-      return;
-    }
-
-    // Set validation limits before creating any plugin instances to avoid
-    // serialization issues.
-    // @todo do we actually need this???
-    $form_state->setLimitValidationErrors(
-      [
-        ['ab_tests', $plugin_type_id, 'config_wrapper', 'settings'],
-      ]
-    );
-
-    // Get plugin settings.
-    $plugin_settings = $form_state->getValue([
-      'ab_tests',
-      $plugin_type_id,
-      'config_wrapper',
-      'settings',
-    ]) ?? [];
-    $plugin = $plugin_manager->createInstance($plugin_id, $plugin_settings);
-
-    if (!$plugin instanceof PluginFormInterface) {
-      return;
-    }
-
-    // Create a clean subform element to avoid serialization issues.
-    $element = $form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'];
-    $subform_state = SubformState::createForSubform($element, $form, $form_state);
-
-    $plugin->validateConfigurationForm(
-      $element,
-      $subform_state
-    );
   }
 
   /**
@@ -344,51 +511,109 @@ trait PluginSelectionFormTrait {
    */
   protected function updatePluginConfiguration(array $form, FormStateInterface $form_state, string $plugin_type_id): array {
     $settings = [];
-    $plugin_id = $form_state->getValue(['ab_tests', $plugin_type_id, 'id']);
-    if (!$plugin_id) {
-      return $settings;
+    
+    if ($plugin_type_id === 'analytics') {
+      // For analytics plugins, handle multiple plugins.
+      $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type_id);
+      
+      foreach ($selected_plugin_ids as $plugin_id) {
+        if (!$plugin_id) {
+          continue;
+        }
+        
+        // Check if the plugin has a configuration form.
+        if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'])) {
+          // Store plugin without configuration.
+          $settings[$plugin_type_id][$plugin_id]['id'] = $plugin_id;
+          continue;
+        }
+
+        // Get the plugin instance.
+        $plugin_manager = $this->getPluginManager($plugin_type_id);
+
+        if (!$plugin_manager) {
+          continue;
+        }
+
+        // Get values from the form.
+        $plugin_values = $form_state->getValue([
+          'ab_tests',
+          $plugin_type_id,
+          'config_wrapper',
+          $plugin_id . '_settings',
+        ]) ?? [];
+
+        // Create instance with merged configuration.
+        try {
+          $plugin = $plugin_manager->createInstance($plugin_id, $plugin_values);
+        }
+        catch (PluginException $e) {
+          continue;
+        }
+
+        // Only process with PluginFormInterface.
+        if (!$plugin instanceof PluginFormInterface) {
+          $settings[$plugin_type_id][$plugin_id]['id'] = $plugin_id;
+          continue;
+        }
+        
+        // Create subform state and submit form.
+        $element = $form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'];
+        $subform_state = SubformState::createForSubform($element, $form, $form_state);
+        $plugin->submitConfigurationForm($element, $subform_state);
+
+        // Store plugin ID and configuration.
+        $settings[$plugin_type_id][$plugin_id]['id'] = $plugin_id;
+        $settings[$plugin_type_id][$plugin_id]['settings'] = $plugin->getConfiguration();
+      }
+    } else {
+      // For other plugins (like variants), handle single plugin.
+      $plugin_id = $form_state->getValue(['ab_tests', $plugin_type_id, 'id']);
+      if (!$plugin_id) {
+        return $settings;
+      }
+      $settings[$plugin_type_id]['id'] = $plugin_id;
+
+      // Check if the plugin has a configuration form.
+      if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'])) {
+        return $settings;
+      }
+
+      // Get the plugin instance.
+      $plugin_manager = $this->getPluginManager($plugin_type_id);
+
+      if (!$plugin_manager) {
+        return $settings;
+      }
+
+      // Get values from the form.
+      $plugin_values = $form_state->getValue([
+        'ab_tests',
+        $plugin_type_id,
+        'config_wrapper',
+        'settings',
+      ]) ?? [];
+
+      // Create instance with merged configuration.
+      try {
+        $plugin = $plugin_manager->createInstance($plugin_id, $plugin_values);
+      }
+      catch (PluginException $e) {
+        return $settings;
+      }
+
+      // Only process with PluginFormInterface.
+      if (!$plugin instanceof PluginFormInterface) {
+        return $settings;
+      }
+      // Create subform state and submit form.
+      $element = $form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'];
+      $subform_state = SubformState::createForSubform($element, $form, $form_state);
+      $plugin->submitConfigurationForm($element, $subform_state);
+
+      // Store plugin ID and configuration.
+      $settings[$plugin_type_id]['settings'] = $plugin->getConfiguration();
     }
-    $settings[$plugin_type_id]['id'] = $plugin_id;
-
-    // Check if the plugin has a configuration form.
-    if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'])) {
-      return $settings;
-    }
-
-    // Get the plugin instance.
-    $plugin_manager = $this->getPluginManager($plugin_type_id);
-
-    if (!$plugin_manager) {
-      return $settings;
-    }
-
-    // Get values from the form.
-    $plugin_values = $form_state->getValue([
-      'ab_tests',
-      $plugin_type_id,
-      'config_wrapper',
-      'settings',
-    ]) ?? [];
-
-    // Create instance with merged configuration.
-    try {
-      $plugin = $plugin_manager->createInstance($plugin_id, $plugin_values);
-    }
-    catch (PluginException $e) {
-      return $settings;
-    }
-
-    // Only process with PluginFormInterface.
-    if (!$plugin instanceof PluginFormInterface) {
-      return $settings;
-    }
-    // Create subform state and submit form.
-    $element = $form['ab_tests'][$plugin_type_id]['config_wrapper']['settings'];
-    $subform_state = SubformState::createForSubform($element, $form, $form_state);
-    $plugin->submitConfigurationForm($element, $subform_state);
-
-    // Store plugin ID and configuration.
-    $settings[$plugin_type_id]['settings'] = $plugin->getConfiguration();
 
     return $settings;
   }

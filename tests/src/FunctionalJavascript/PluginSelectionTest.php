@@ -99,19 +99,29 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     // The timeout plugin configuration form should not be shown.
     $this->assertSession()->elementNotExists('css', '#edit-ab-tests-variants-config-wrapper-settings');
 
-    // Change to the mock tracker plugin.
-    $page->selectFieldOption('ab_tests[analytics][id]', 'mock_tracker');
+    // Select the mock tracker plugin (now using checkboxes).
+    $page->checkField('ab_tests[analytics][id][mock_tracker]');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    // The timeout plugin configuration form should now be shown.
-    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-settings"] > legend', 'Mock Tracker');
-    // Confirm that the timeout plugin form includes specific fields.
-    $this->assertSession()->elementExists('css', 'input[name="ab_tests[analytics][config_wrapper][settings][api_key]"]');
-    $this->assertSession()->elementExists('css', 'input[name="ab_tests[analytics][config_wrapper][settings][tracking_domain]"]');
+    // The mock tracker plugin configuration form should now be shown.
+    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-mock-tracker-settings"] > legend', 'Mock Tracker');
+    // Confirm that the mock tracker plugin form includes specific fields.
+    $this->assertSession()->elementExists('css', 'input[name="ab_tests[analytics][config_wrapper][mock_tracker_settings][api_key]"]');
+    $this->assertSession()->elementExists('css', 'input[name="ab_tests[analytics][config_wrapper][mock_tracker_settings][tracking_domain]"]');
 
-    $page->selectFieldOption('ab_tests[analytics][id]', 'null');
+    // Uncheck the mock tracker plugin.
+    $page->uncheckField('ab_tests[analytics][id][mock_tracker]');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    // The timeout plugin configuration form should not be shown.
-    $this->assertSession()->elementNotExists('css', '#edit-ab-tests-analytics-config-wrapper-settings');
+    // The mock tracker plugin configuration form should not be shown.
+    $this->assertSession()->elementNotExists('css', '#edit-ab-tests-analytics-config-wrapper-mock-tracker-settings');
+    
+    // Test multiple tracker selection.
+    $page->checkField('ab_tests[analytics][id][mock_tracker]');
+    $page->checkField('ab_tests[analytics][id][null]');
+    $this->assertSession()->assertWaitOnAjaxRequest();
+    // Both configuration forms should be shown.
+    $this->assertSession()->elementExists('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-mock-tracker-settings"]');
+    // Null tracker should not have configuration form.
+    $this->assertSession()->elementNotExists('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-null-settings"]');
   }
 
   /**
@@ -139,12 +149,12 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->checkField('ab_tests[variants][config_wrapper][settings][available_variants][rss]');
     $page->checkField('ab_tests[variants][config_wrapper][settings][available_variants][teaser]');
 
-    // Select the mock tracker plugin.
-    $page->selectFieldOption('ab_tests[analytics][id]', 'mock_tracker');
+    // Select the mock tracker plugin (now using checkboxes).
+    $page->checkField('ab_tests[analytics][id][mock_tracker]');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Fill in the mock tracker configuration.
-    $page->fillField('ab_tests[analytics][config_wrapper][settings][api_key]', 'test-api-key-123');
-    $page->fillField('ab_tests[analytics][config_wrapper][settings][tracking_domain]', 'custom.track.example.com');
+    $page->fillField('ab_tests[analytics][config_wrapper][mock_tracker_settings][api_key]', 'test-api-key-123');
+    $page->fillField('ab_tests[analytics][config_wrapper][mock_tracker_settings][tracking_domain]', 'custom.track.example.com');
 
     // Save the form.
     $page->pressButton('Save');
@@ -158,9 +168,10 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->assertEquals('timeout', $saved_settings['variants']['id']);
     $this->assertEquals(['min' => 500, 'max' => 2000], $saved_settings['variants']['settings']['timeout']);
     $this->assertEquals(['rss', 'teaser'], array_filter(array_values($saved_settings['variants']['settings']['available_variants'])));
-    $this->assertEquals('mock_tracker', $saved_settings['analytics']['id']);
-    $this->assertEquals('test-api-key-123', $saved_settings['analytics']['settings']['api_key']);
-    $this->assertEquals('custom.track.example.com', $saved_settings['analytics']['settings']['tracking_domain']);
+    // Analytics plugins are now stored in a multi-plugin format.
+    $this->assertEquals('mock_tracker', $saved_settings['analytics']['mock_tracker']['id']);
+    $this->assertEquals('test-api-key-123', $saved_settings['analytics']['mock_tracker']['settings']['api_key']);
+    $this->assertEquals('custom.track.example.com', $saved_settings['analytics']['mock_tracker']['settings']['tracking_domain']);
   }
 
   /**

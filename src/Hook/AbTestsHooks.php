@@ -165,21 +165,51 @@ class AbTestsHooks {
     }
     // Do not affect the Ajax re-render of the entity.
     if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
-      // Attach the library from the analytics tracker.
-      $analytics_tracker_id = $settings['analytics']['id'] ?? 'null';
-      try {
-        $analytics_tracker = $this->analyticsManager->createInstance(
-          $analytics_tracker_id,
-          $settings['analytics']['settings'] ?? [],
-        );
-        assert($analytics_tracker instanceof AbAnalyticsInterface);
-        $tracker_build = $analytics_tracker->toRenderable();
+      // Attach libraries from all analytics trackers.
+      $analytics_settings = $settings['analytics'] ?? [];
+      
+      // Handle both legacy single tracker format and new multi-tracker format.
+      if (isset($analytics_settings['id'])) {
+        // Legacy format: single tracker.
+        $analytics_trackers = [$analytics_settings['id'] => $analytics_settings];
+      } else {
+        // New format: multiple trackers.
+        $analytics_trackers = $analytics_settings;
       }
-      catch (PluginException $e) {
-        $tracker_build = [
-          '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
-        ];
+      
+      $tracker_build = ['#attached' => ['library' => [], 'drupalSettings' => []]];
+      
+      foreach ($analytics_trackers as $tracker_id => $tracker_config) {
+        if (is_array($tracker_config) && isset($tracker_config['id'])) {
+          $tracker_id = $tracker_config['id'];
+          $tracker_settings = $tracker_config['settings'] ?? [];
+        } else {
+          $tracker_settings = $tracker_config['settings'] ?? [];
+        }
+        
+        try {
+          $analytics_tracker = $this->analyticsManager->createInstance(
+            $tracker_id,
+            $tracker_settings,
+          );
+          assert($analytics_tracker instanceof AbAnalyticsInterface);
+          $individual_tracker_build = $analytics_tracker->toRenderable();
+          $tracker_build['#attached'] = NestedArray::mergeDeep(
+            $tracker_build['#attached'] ?? [],
+            $individual_tracker_build['#attached'] ?? []
+          );
+        }
+        catch (PluginException $e) {
+          $fallback_build = [
+            '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
+          ];
+          $tracker_build['#attached'] = NestedArray::mergeDeep(
+            $tracker_build['#attached'] ?? [],
+            $fallback_build['#attached'] ?? []
+          );
+        }
       }
+      
       $build['ab_tests_tracker'] = $tracker_build;
       $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
