@@ -106,7 +106,7 @@ trait PluginSelectionFormTrait {
     if ($plugin_type === 'analytics') {
       // Get currently selected plugins, either from form_state or settings.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
-        ?? $this->getSelectedPluginsFromSettings($settings);
+        ?: $this->getSelectedPluginsFromSettings($settings);
 
       // List all plugins with settings for selected ones.
       $plugin_settings = [];
@@ -178,7 +178,7 @@ trait PluginSelectionFormTrait {
     if ($plugin_type === 'analytics') {
       // For analytics plugins, build multiple configuration forms.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
-        ?? $this->getSelectedPluginsFromSettings($settings);
+        ?: $this->getSelectedPluginsFromSettings($settings);
 
       foreach ($selected_plugin_ids as $plugin_id) {
         if (!empty($plugin_id) && $plugin_id !== 'null') {
