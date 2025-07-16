@@ -20,6 +20,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Hook\Attribute\Hook;
 use Drupal\Core\Link;
+use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\Entity\NodeType;
@@ -113,7 +114,6 @@ class AbTestsHooks {
    *   FALSE otherwise.
    */
   private function isFullPageEntity(EntityInterface $entity): bool {
-    // @todo Use the PageService from PH Tools to achieve this.
     $request = $this->requestStack->getCurrentRequest();
     $page_entity = $request
       ->get($entity->getEntityTypeId());
@@ -168,36 +168,31 @@ class AbTestsHooks {
     if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
       // Attach libraries from all analytics trackers.
       $analytics_settings = $settings['analytics'] ?? [];
-      $tracker_build = ['#attached' => ['library' => [], 'drupalSettings' => []]];
-      foreach ($analytics_settings as $tracker_id => $tracker_config) {
-        $tracker_settings = $tracker_config['settings'] ?? [];
-        try {
-          $analytics_tracker = $this->analyticsManager->createInstance(
-            $tracker_id,
-            $tracker_settings,
-          );
-          assert($analytics_tracker instanceof AbAnalyticsInterface);
-          $individual_tracker_build = $analytics_tracker->toRenderable();
-          $tracker_build['#attached'] = NestedArray::mergeDeep(
-            $tracker_build['#attached'] ?? [],
-            $individual_tracker_build['#attached'] ?? []
-          );
-        }
-        catch (PluginException $e) {
-          $fallback_build = [
-            '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
-          ];
-          $tracker_build['#attached'] = NestedArray::mergeDeep(
-            $tracker_build['#attached'] ?? [],
-            $fallback_build['#attached'] ?? []
-          );
-        }
-      }
+      $metadata = array_reduce(
+        $analytics_settings,
+        function (BubbleableMetadata $metadata, array $tracker_config) {
+          $tracker_id = $tracker_config['id'] ?? NULL;
+          if (!$tracker_id) {
+            return $metadata;
+          }
+          $tracker_settings = $tracker_config['settings'] ?? [];
+          try {
+            $analytics_tracker = $this->analyticsManager->createInstance(
+              $tracker_id,
+              $tracker_settings,
+            );
+            assert($analytics_tracker instanceof AbAnalyticsInterface);
+            $metadata->addCacheableDependency(BubbleableMetadata::createFromRenderArray($analytics_tracker->toRenderable()));
+          }
+          catch (PluginException $e) {
+          }
+          return $metadata;
+        },
+        new BubbleableMetadata(),
+      );
 
-      $build['ab_tests_tracker'] = $tracker_build;
-      $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
+      $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $metadata->getAttachments());
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
-      unset($build['ab_tests_tracker']['#attached']);
       return;
     }
     if (!$this->isFullPageEntity($entity)) {
