@@ -71,6 +71,8 @@ trait PluginSelectionFormTrait {
    *   The plugin type (e.g., 'variants', 'analytics').
    * @param string $feature
    *   The feature we are injecting this into.
+   * @param bool $multiple_cardinality
+   *   TRUE for multiple cardinality.
    */
   private function injectPluginSelector(
     array &$form,
@@ -80,7 +82,7 @@ trait PluginSelectionFormTrait {
     string $feature,
     bool $multiple_cardinality = FALSE,
   ): void {
-    $get_plugin_label = static function(PluginInspectionInterface $plugin): string {
+    $get_plugin_label = static function (PluginInspectionInterface $plugin): string {
       return $plugin instanceof UiPluginInterface ? $plugin->label() : $plugin->getPluginId();
     };
 
@@ -122,7 +124,7 @@ trait PluginSelectionFormTrait {
     // Filter the plugins by their supported features.
     $plugins = array_filter(
       $plugins,
-      static function(PluginInspectionInterface $plugin) use ($feature) {
+      static function (PluginInspectionInterface $plugin) use ($feature) {
         $supported_features = $plugin->getPluginDefinition()['supported_features'] ?? [];
         return empty($supported_features) || in_array($feature, $supported_features);
       },

@@ -115,7 +115,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->assertSession()->assertWaitOnAjaxRequest();
     // The mock tracker plugin configuration form should not be shown.
     $this->assertSession()->elementNotExists('css', '#edit-ab-tests-analytics-config-wrapper-mock-tracker-settings');
-    
+
     // Test multiple tracker selection.
     $page->checkField('ab_tests[analytics][id][mock_tracker]');
     $page->checkField('ab_tests[analytics][id][null]');

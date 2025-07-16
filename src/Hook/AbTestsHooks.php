@@ -168,26 +168,9 @@ class AbTestsHooks {
     if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
       // Attach libraries from all analytics trackers.
       $analytics_settings = $settings['analytics'] ?? [];
-
-      // Handle both legacy single tracker format and new multi-tracker format.
-      if (isset($analytics_settings['id'])) {
-        // Legacy format: single tracker.
-        $analytics_trackers = [$analytics_settings['id'] => $analytics_settings];
-      } else {
-        // New format: multiple trackers.
-        $analytics_trackers = $analytics_settings;
-      }
-
       $tracker_build = ['#attached' => ['library' => [], 'drupalSettings' => []]];
-
-      foreach ($analytics_trackers as $tracker_id => $tracker_config) {
-        if (is_array($tracker_config) && isset($tracker_config['id'])) {
-          $tracker_id = $tracker_config['id'];
-          $tracker_settings = $tracker_config['settings'] ?? [];
-        } else {
-          $tracker_settings = $tracker_config['settings'] ?? [];
-        }
-
+      foreach ($analytics_settings as $tracker_id => $tracker_config) {
+        $tracker_settings = $tracker_config['settings'] ?? [];
         try {
           $analytics_tracker = $this->analyticsManager->createInstance(
             $tracker_id,
