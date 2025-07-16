@@ -3,6 +3,9 @@ ab_tests.settings:
   type: config_object
   label: 'A/B Tests settings'
   mapping:
+    debug_mode:
+      type: boolean
+      label: 'Add debug messages to the browser console.'
     ignore_config_export:
       type: boolean
       label: 'Ignore A/B Tests configuration during configuration export'
@@ -19,9 +22,6 @@ node.type.*.third_party.ab_tests:
         is_active:
           type: boolean
           label: 'Is active'
-        debug:
-          type: boolean
-          label: 'Debug mode'
         default:
           type: mapping
           mapping:

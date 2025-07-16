@@ -1,20 +1,21 @@
-'use strict';
-
 /**
  * Base class for A/B test deciders.
  *
  * @abstract
  */
 class BaseDecider extends BaseAction {
-
   /**
    * Makes a decision about which variant to display.
    *
    * @param {HTMLElement} element
    *   The element to decide on.
    *
-   * @returns {Promise<Decision>}
+   * @return {Promise<Decision>}
    *   Resolves with the decision.
+   *
+   * @throws {Error}
+   *   When there is an error.
+   * @abstract
    */
   decide(element) {
     throw new Error('Decider must implement decide() method.');
@@ -23,11 +24,10 @@ class BaseDecider extends BaseAction {
   /**
    * Generates a unique decision ID.
    *
-   * @returns {string}
+   * @return {string}
    *   A unique identifier for this decision.
    */
   generateDecisionId() {
-    return 'decision-' + crypto.randomUUID();
+    return `decision-${crypto.randomUUID()}`;
   }
-
 }

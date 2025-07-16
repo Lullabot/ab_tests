@@ -1,0 +1,26 @@
+{
+  "name": "ab_tests",
+  "version": "1.0.0",
+  "description": "A/B Tests Drupal module JavaScript linting and formatting",
+  "private": true,
+  "scripts": {
+    "lint:check": "eslint js/ modules/*/js/ --ext .js",
+    "lint:fix": "eslint js/ modules/*/js/ --ext .js --fix",
+    "format:fix": "prettier --write 'js/**/*.js' 'modules/*/js/**/*.js'",
+    "format:check": "prettier --check 'js/**/*.js' 'modules/*/js/**/*.js'",
+    "js:check": "npm run lint:check && npm run format:check",
+    "js:fix": "npm run lint:fix && npm run format:fix"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-yml": "^1.14.0",
+    "prettier": "^3.2.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

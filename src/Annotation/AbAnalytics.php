@@ -39,6 +39,17 @@ class AbAnalytics extends Plugin {
   public $description;
 
   /**
+   * Supported features.
+   *
+   * Use this to restrict what features can use this decider. Features include
+   * 'ab_blocks', 'ab_view_modes`, ...
+   *
+   * @var array
+   *   The list of features. Leave empty to support them all.
+   */
+  public $supported_features = [];
+
+  /**
    * The analytics library to attach.
    *
    * @var string

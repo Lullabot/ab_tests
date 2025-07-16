@@ -20,7 +20,7 @@ jobs:
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
       # Set up Chrome for JavaScript tests
       chrome:
-        image: selenium/standalone-chrome:latest
+        image: selenium/standalone-chrome:4.15.0
         ports:
           - 4444:4444
         options: --health-cmd="/opt/bin/check-grid.sh" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -46,12 +46,12 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: mbstring, xml, gd, opcache, mysql
+          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets
           coverage: none
 
       - name: Get composer cache directory
         id: composercache
-        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
       - name: Cache composer dependencies
         uses: actions/cache@v4
@@ -62,25 +62,38 @@ jobs:
 
       - name: Install Drupal core dependencies
         run: |
-          composer --no-interaction --no-progress --prefer-dist --optimize-autoloader install
-#
-#      - name: Install module dependencies
-#        run: |
-#          composer --no-interaction --no-progress require drupal/my-dependeny
+          composer --no-interaction --no-progress --prefer-dist install
 
-      - name: Install Coder module
+      - name: Install module dev-dependencies
         run: |
-          composer --dev --no-interaction --no-progress require drupal/coder:^8
+          composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
 
       - name: Check coding standards
         run: |
-          ./vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install modules/ab_tests
+          composer --working-dir=modules/ab_tests run lint:check
 
       - name: Setup web server
         run: |
           php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
-          echo "::set-output name=pid::$!"
+          echo "pid=$!" >> $GITHUB_OUTPUT
         id: server
+
+      - name: Wait for services to be ready
+        run: |
+          # Wait for Chrome to be ready
+          until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do
+            echo "Waiting for Chrome service..."
+            sleep 2
+          done
+          echo "Chrome service is ready"
+
+          # Wait for MySQL to be ready
+          until mysql -h 127.0.0.1 -u root -proot -e "SELECT 1"; do
+            echo "Waiting for MySQL service..."
+            sleep 2
+          done
+          echo "MySQL service is ready"
+          php ./vendor/bin/phpunit --version
 
       - name: Install Drupal
         run: |
@@ -96,8 +109,8 @@ jobs:
 #
       - name: Run Functional Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Functional
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"w3c":false,"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript

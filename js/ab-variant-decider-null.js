@@ -1,19 +1,22 @@
 ((Drupal, once) => {
-  'use strict';
-
   /**
    * Behavior to initialize timeout decider.
    */
   Drupal.behaviors.abVariantDeciderNull = {
     attach(context, settings) {
-      if (!Drupal.abTests) {
-        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
-        return;
+      const abTestsSettings = settings?.ab_tests || {};
+      const { deciderSettings, debug = false } = abTestsSettings;
+
+      let actualDeciderSettings = deciderSettings;
+      if (!actualDeciderSettings?.experimentsSelector) {
+        // Fallback selector if not configured
+        const fallbackSelector = '[data-ab-tests-decider-status="idle"]';
+        actualDeciderSettings = { experimentsSelector: fallbackSelector };
       }
 
       const elements = once(
         'ab-variant-decider-null',
-        '[data-ab-tests-entity-root]',
+        actualDeciderSettings.experimentsSelector,
         context,
       );
 
@@ -21,15 +24,17 @@
         return;
       }
 
+      const abTestsManager = new AbTestsManager();
       elements.forEach(element => {
-        Drupal.abTests.registerElement(element);
-
         const decider = new NullDecider();
-        const uuid = element.getAttribute('data-ab-tests-entity-root');
 
-        Drupal.abTests.registerDecider(uuid, decider);
+        abTestsManager.registerDecider(
+          element,
+          decider,
+          abTestsSettings,
+          debug,
+        );
       });
     },
   };
-
 })(Drupal, once);

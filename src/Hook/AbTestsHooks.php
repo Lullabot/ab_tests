@@ -21,7 +21,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Hook\Attribute\Hook;
 use Drupal\Core\Link;
 use Drupal\Core\Routing\RouteMatchInterface;
-use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\Entity\NodeType;
 use Drupal\node\NodeTypeInterface;
@@ -114,6 +113,7 @@ class AbTestsHooks {
    *   FALSE otherwise.
    */
   private function isFullPageEntity(EntityInterface $entity): bool {
+    // @todo Use the PageService from PH Tools to achieve this.
     $request = $this->requestStack->getCurrentRequest();
     $page_entity = $request
       ->get($entity->getEntityTypeId());
@@ -149,6 +149,7 @@ class AbTestsHooks {
     // Return early if A/B tests are not enabled for this particular bundle.
     $bundle_entity = $this->entityHelper->getBundle($entity);
     $settings = $bundle_entity?->getThirdPartySetting('ab_tests', 'ab_tests', []) ?? [];
+    $settings['debug'] = $this->configFactory->get('ab_tests.settings')->get('debug_mode');
     $this->cache[$cid] = $settings;
     return $settings;
   }
@@ -183,7 +184,7 @@ class AbTestsHooks {
       $build['ab_tests_tracker'] = $tracker_build;
       $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
-      $build['#attached']['drupalSettings']['ab_tests']['defaultViewMode'] = $settings['default'] ?? 'default';
+
       $build['ab_tests_tracker'] = $tracker_build;
       unset($build['ab_tests_tracker']['#attached']);
       return;
@@ -199,7 +200,7 @@ class AbTestsHooks {
         $settings['variants']['settings'] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
-      $decider_build = $variant_decider->toRenderable();
+      $decider_build = $variant_decider->toRenderable(['experimentsSelector' => '[data-ab-tests-entity-root]']);
     }
     catch (PluginException $e) {
       $decider_build = [
@@ -209,36 +210,16 @@ class AbTestsHooks {
     // Deal with a core bug that won't bubble up attachments correctly.
     $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
-    $build['#attached']['drupalSettings']['ab_tests']['defaultViewMode'] = $settings['default'] ?? 'default';
+    $view_mode = substr($settings['default']['display_mode'] ?? 'node.default', strlen($entity->getEntityTypeId()) + 1);
+    $build['#attached']['drupalSettings']['ab_tests']['features']['ab_view_modes']['defaultDecisionValue'] = $view_mode;
     $build['ab_tests_decider'] = $decider_build;
     $classes = $build['#attributes']['class'] ?? [];
     $build['#attributes']['class'] = [...$classes, 'ab-test-loading'];
+    $build['#attributes']['data-ab-tests-decider-status'] = 'idle';
+    $build['#attributes']['data-ab-tests-feature'] = 'ab_view_modes';
     unset($build['ab_tests_decider']['#attached']);
 
     $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
-  }
-
-  /**
-   * Implements hook_preprocess_node().
-   *
-   * Sets the 'page' variable to TRUE when re-rendering the node via Ajax.
-   */
-  #[Hook('hook_preprocess_node')]
-  public function preprocessNode(&$variables): void {
-    $route_name = $this->requestStack->getCurrentRequest()
-      ->get(RouteObjectInterface::ROUTE_NAME);
-    if ($route_name !== 'ab_tests.render_variant') {
-      return;
-    }
-    $entity = $variables['node'] ?? NULL;
-    if (!$entity instanceof EntityInterface) {
-      return;
-    }
-    if (!$this->isFullPageEntity($entity)) {
-      return;
-    }
-    // We are dealing with the re-render of the A/B test.
-    $variables['page'] = TRUE;
   }
 
   /**
@@ -284,17 +265,6 @@ class AbTestsHooks {
       '#description' => $this->t('If enabled, this node type will be used to create A/B tests.'),
       '#default_value' => (bool) ($settings['is_active'] ?? FALSE),
     ];
-    $form['ab_tests']['debug'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Debug'),
-      '#description' => $this->t('If enabled, debug statements will be printed in the JS console.'),
-      '#default_value' => (bool) ($settings['debug'] ?? FALSE),
-      '#states' => [
-        'visible' => [
-          ':input[name="ab_tests[is_active]"]' => ['checked' => TRUE],
-        ],
-      ],
-    ];
 
     $form['ab_tests']['default'] = [
       '#title' => $this->t('Default'),
@@ -323,18 +293,21 @@ class AbTestsHooks {
       '#default_value' => $settings['default']['display_mode'] ?? 'default',
     ];
 
+    $feature = 'ab_view_modes';
     // Use enhanced trait methods to inject plugin selectors with AJAX support.
     $this->injectPluginSelector(
       $form,
       $form_state,
       $settings['variants'] ?? [],
       'variants',
+      $feature,
     );
     $this->injectPluginSelector(
       $form,
       $form_state,
       $settings['analytics'] ?? [],
       'analytics',
+      $feature,
     );
 
     $form['#entity_builders'][] = [$this, 'entityBuilder'];

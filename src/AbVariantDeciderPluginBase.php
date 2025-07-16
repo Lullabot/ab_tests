@@ -29,13 +29,15 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
   /**
    * {@inheritdoc}
    */
-  public function toRenderable(): array {
+  public function toRenderable($additional_settings = []): array {
+    $decider_library = $this->getPluginDefinition()['decider_library'] ?? 'ab_tests/ab_variant_decider.null';
+    $library_provider = explode('/', $decider_library)[0];
     return [
       '#attached' => [
-        'library' => [$this->getPluginDefinition()['decider_library'] ?? 'ab_tests/ab_variant_decider.null'],
+        'library' => [$decider_library],
         'drupalSettings' => [
-          'ab_tests' => [
-            'deciderSettings' => $this->getJavaScriptSettings(),
+          $library_provider => [
+            'deciderSettings' => $this->getJavaScriptSettings() + $additional_settings,
           ],
         ],
       ],

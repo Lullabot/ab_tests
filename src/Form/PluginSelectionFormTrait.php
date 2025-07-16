@@ -69,12 +69,15 @@ trait PluginSelectionFormTrait {
    *   The settings array.
    * @param string $plugin_type
    *   The plugin type (e.g., 'variants', 'analytics').
+   * @param string $feature
+   *   The feature we are injecting this into.
    */
   private function injectPluginSelector(
     array &$form,
     FormStateInterface $form_state,
     array $settings,
     string $plugin_type,
+    string $feature,
   ): void {
     $get_plugin_label = static function (PluginInspectionInterface $plugin): string {
       return $plugin instanceof UiPluginInterface ? $plugin->label() : $plugin->getPluginId();
@@ -103,6 +106,14 @@ trait PluginSelectionFormTrait {
     // List all plugins.
     $plugins = $plugin_manager->getPlugins(
       settings: [$selected_plugin_id => $settings['settings'] ?? []],
+    );
+    // Filter the plugins by their supported features.
+    $plugins = array_filter(
+      $plugins,
+      static function (PluginInspectionInterface $plugin) use ($feature) {
+        $supported_features = $plugin->getPluginDefinition()['supported_features'] ?? [];
+        return empty($supported_features) || in_array($feature, $supported_features);
+      },
     );
 
     $wrapper_id = sprintf('%s-config-wrapper', $plugin_type);
@@ -199,18 +210,17 @@ trait PluginSelectionFormTrait {
 
     // If this is an AJAX request and the triggering element is the plugin
     // selector.
-    if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'settings') {
-      $plugin_id = $form_state->getValue(array_merge([
+    if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'id') {
+      return $form_state->getValue([
         'ab_tests',
         $plugin_type,
-        'settings',
-      ]));
-      return $plugin_id;
+        'id',
+      ]);
     }
 
     // Try to get from values if the form has been submitted.
-    if ($form_state->hasValue(['ab_tests', $plugin_type, 'settings'])) {
-      return $form_state->getValue(['ab_tests', $plugin_type, 'settings']);
+    if ($form_state->hasValue(['ab_tests', $plugin_type, 'id'])) {
+      return $form_state->getValue(['ab_tests', $plugin_type, 'id']);
     }
 
     return NULL;

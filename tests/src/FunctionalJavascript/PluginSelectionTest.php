@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use Drupal\node\Entity\NodeType;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Tests the plugin selection functionality.
  *
  * @group ab_tests
  */
+#[Group('ab_tests')]
 class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**
@@ -26,7 +28,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     'field_ui',
     'ab_tests',
     'ab_analytics_tracker_example',
-    'ab_variant_decider_timeout',
+    'ab_variant_decider_view_mode_timeout',
   ];
 
   /**
@@ -86,10 +88,10 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->checkField('ab_tests[is_active]');
 
     // Change to the timeout plugin.
-    $page->selectFieldOption('ab_tests[variants][id]', 'timeout');
+    $page->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // The timeout plugin configuration form should now be shown.
-    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-variants-config-wrapper-settings"] > legend', 'Timeout');
+    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-variants-config-wrapper-settings"] > legend', 'Timeout (View Mode)');
     // Confirm that the timeout plugin form includes specific fields.
     $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][settings][timeout][min]"]');
     $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][settings][timeout][max]"]');
@@ -115,7 +117,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
   }
 
   /**
-   * Tests complex configuration using TimeoutAbDecider.
+   * Tests complex configuration using TimeoutViewModeAbDecider.
    */
   public function testPluginConfiguration(): void {
     // Access the content type edit form.
@@ -130,7 +132,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->fillField('ab_tests[default][display_mode]', 'node.full');
 
     // Change to the timeout plugin.
-    $page->selectFieldOption('ab_tests[variants][id]', 'timeout');
+    $page->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Fill in the timeout configuration.
     $page->fillField('ab_tests[variants][config_wrapper][settings][timeout][min]', '500');
@@ -155,7 +157,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $content_type = \Drupal::entityTypeManager()->getStorage('node_type')->load($this->contentType->id());
     $saved_settings = $content_type->getThirdPartySetting('ab_tests', 'ab_tests');
 
-    $this->assertEquals('timeout', $saved_settings['variants']['id']);
+    $this->assertEquals('timeout_view_mode', $saved_settings['variants']['id']);
     $this->assertEquals(['min' => 500, 'max' => 2000], $saved_settings['variants']['settings']['timeout']);
     $this->assertEquals(['rss', 'teaser'], array_filter(array_values($saved_settings['variants']['settings']['available_variants'])));
     $this->assertEquals('mock_tracker', $saved_settings['analytics']['id']);
@@ -164,7 +166,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
   }
 
   /**
-   * Tests form validation with TimeoutAbDecider.
+   * Tests form validation with TimeoutViewModeAbDecider.
    */
   public function testTimeoutDeciderValidation(): void {
     // Access the content type edit form.
@@ -179,7 +181,7 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->fillField('ab_tests[default][display_mode]', 'node.full');
 
     // Select the timeout plugin.
-    $this->getSession()->getPage()->selectFieldOption('ab_tests[variants][id]', 'timeout');
+    $this->getSession()->getPage()->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Fill in invalid configuration (min > max).
     $this->getSession()->getPage()->fillField('ab_tests[variants][config_wrapper][settings][timeout][min]', '2000');

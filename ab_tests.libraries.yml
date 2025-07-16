@@ -1,10 +1,14 @@
 ab_tests:
   js:
-    js/AbTests.js: { }
+    js/BaseDecisionHandler.js: { }
+    js/ViewModeDecisionHandler.js: { }
+    js/DecisionHandlerFactory.js: { }
+    js/AbTestsManager.js: { }
     js/BaseAction.js: { }
     js/BaseDecider.js: { }
     js/BaseTracker.js: { }
     js/Decision.js: { }
+    js/ab-tests-init.js: { }
   dependencies:
     - core/drupal
     - core/drupal.ajax
@@ -15,17 +19,20 @@ ab_variant_decider.null:
     js/NullDecider.js: { }
     js/ab-variant-decider-null.js: { }
   dependencies:
+    - core/once
     - ab_tests/ab_tests
 ab_analytics_tracker.null:
   js:
     js/NullTracker.js: { }
     js/ab-analytics-tracker-null.js: { }
   dependencies:
+    - core/once
     - ab_tests/ab_tests
 
-analytics:
+ab_variant_decider.timeout:
   js:
-    js/analytics.js: { }
+    js/ab-variant-decider-timeout.js: { }
+    js/TimeoutDecider.js: { }
   dependencies:
-    - core/drupal
-    - core/drupalSettings
+    - core/once
+    - ab_tests/ab_tests

@@ -1,23 +1,20 @@
 ((Drupal, once) => {
-  'use strict';
-
   /**
    * Behavior to initialize timeout decider.
    */
-  Drupal.behaviors.abVariantDeciderNull = {
+  Drupal.behaviors.abAnalyticsTrackerNull = {
     async attach(context, settings) {
-      if (!Drupal.abTests) {
-        console.warn('Drupal.abTests singleton is not available. Skipping A/B test processing.');
-        return;
-      }
+      const abTestsSettings = settings?.ab_tests || {};
+      const { debug = false } = abTestsSettings;
 
       if (
         context instanceof Document ||
-        !context.hasAttribute('data-ab-tests-decision')) {
+        !context.hasAttribute('data-ab-tests-decision')
+      ) {
         return;
       }
-      await Drupal.abTests.registerTracker(context, new NullTracker());
+      const abTestsManager = new AbTestsManager();
+      await abTestsManager.registerTracker(context, new NullTracker(), debug);
     },
   };
-
 })(Drupal, once);
