@@ -1,14 +1,14 @@
-'use strict';
-
 /**
  * Base class for A/B test trackers.
  *
  * @abstract
  */
 class BaseTracker extends BaseAction {
-
   /**
    * Initialize the tracker.
+   *
+   * @return {Promise<unknown>}
+   *   The promise of initialization.
    */
   initialize() {
     return Promise.resolve();
@@ -22,11 +22,14 @@ class BaseTracker extends BaseAction {
    * @param {HTMLElement} element
    *   The element under test.
    *
-   * @returns {Promise<unknown>}
+   * @return {Promise<unknown>}
    *   Resolves with the tracking.
+   *
+   * @throws {Error}
+   *   When there is an error.
+   * @abstract
    */
   track(decision, element) {
     throw new Error('Tracker must implement track() method.');
   }
-
 }

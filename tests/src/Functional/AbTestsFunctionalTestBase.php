@@ -27,7 +27,7 @@ abstract class AbTestsFunctionalTestBase extends BrowserTestBase {
     'field_ui',
     'ab_tests',
     'ab_analytics_tracker_example',
-    'ab_variant_decider_timeout',
+    'ab_variant_decider_view_mode_timeout',
   ];
 
   /**

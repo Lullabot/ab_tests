@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 use Drupal\ab_tests\Hook\AbTestsHooks;
+use Drupal\ab_tests\PageService;
 use Drupal\Core\Entity\Display\EntityViewDisplayInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -54,7 +55,15 @@ function ab_tests_entity_view_mode_alter(&$view_mode, EntityInterface $entity) {
 /**
  * Implements hook_preprocess_HOOK() for node.html.twig.
  */
-#[LegacyHook]
 function ab_tests_preprocess_node(&$variables) {
-  return \Drupal::service(AbTestsHooks::class)->preprocessNode($variables);
+  $entity = $variables['node'] ?? NULL;
+  $request = \Drupal::requestStack()->getCurrentRequest();
+  $page_entity = \Drupal::service(PageService::class)
+    ->getNodeFromCurrentRoute();
+  if ($page_entity instanceof EntityInterface) {
+    $variables['page'] = $page_entity->uuid() === $entity->uuid();
+    return;
+  }
+  $uuid = $request->get('uuid');
+  $variables['page'] = $uuid === $entity->uuid();
 }

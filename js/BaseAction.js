@@ -1,12 +1,9 @@
-'use strict';
-
 /**
  * Base class for A/B test actions.
  *
  * @abstract
  */
 class BaseAction {
-
   /**
    * Constructs a new BaseAction instance.
    */
@@ -30,7 +27,7 @@ class BaseAction {
   /**
    * Gets the status of the tracker.
    *
-   * @returns {string}
+   * @return {string}
    *   The status.
    */
   getStatus() {
@@ -40,7 +37,7 @@ class BaseAction {
   /**
    * Returns the error object.
    *
-   * @returns {Object|null}
+   * @return {Object|null}
    *   The error object, or null if no error.
    */
   getError() {
@@ -76,7 +73,11 @@ class BaseAction {
   onError(error) {
     this.setStatus('error');
     this.error = error;
-    this._debug && console.error('[A/B Tests]', 'There was an error during the A/B test.', error);
+    this.getDebug() &&
+      console.error(
+        '[A/B Tests]',
+        'There was an error during the A/B test.',
+        error,
+      );
   }
-
 }

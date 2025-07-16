@@ -69,12 +69,15 @@ trait PluginSelectionFormTrait {
    *   The settings array.
    * @param string $plugin_type
    *   The plugin type (e.g., 'variants', 'analytics').
+   * @param string $feature
+   *   The feature we are injecting this into.
    */
   private function injectPluginSelector(
     array &$form,
     FormStateInterface $form_state,
     array $settings,
     string $plugin_type,
+    string $feature,
   ): void {
     $get_plugin_label = static function (PluginInspectionInterface $plugin): string {
       return $plugin instanceof UiPluginInterface ? $plugin->label() : $plugin->getPluginId();
@@ -97,21 +100,21 @@ trait PluginSelectionFormTrait {
       ],
     ];
     $wrapper_id = sprintf('%s-config-wrapper', $plugin_type);
-    
+
     // For analytics plugins, use checkboxes to allow multiple selection.
     // For other plugins (like variants), use radio buttons for single selection.
     if ($plugin_type === 'analytics') {
       // Get currently selected plugins, either from form_state or settings.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
         ?? $this->getSelectedPluginsFromSettings($settings);
-      
+
       // List all plugins with settings for selected ones.
       $plugin_settings = [];
       foreach ($selected_plugin_ids as $plugin_id) {
         $plugin_settings[$plugin_id] = $settings[$plugin_id]['settings'] ?? [];
       }
       $plugins = $plugin_manager->getPlugins(settings: $plugin_settings);
-      
+
       // Add the checkboxes with AJAX callback.
       $form['ab_tests'][$plugin_type]['id'] = [
         '#type' => 'checkboxes',
@@ -136,7 +139,15 @@ trait PluginSelectionFormTrait {
       $plugins = $plugin_manager->getPlugins(
         settings: [$selected_plugin_id => $settings['settings'] ?? []],
       );
-      
+      // Filter the plugins by their supported features.
+      $plugins = array_filter(
+        $plugins,
+        static function (PluginInspectionInterface $plugin) use ($feature) {
+          $supported_features = $plugin->getPluginDefinition()['supported_features'] ?? [];
+          return empty($supported_features) || in_array($feature, $supported_features);
+        },
+      );
+
       // Add the radio buttons with AJAX callback.
       $form['ab_tests'][$plugin_type]['id'] = [
         '#type' => 'radios',
@@ -168,7 +179,7 @@ trait PluginSelectionFormTrait {
       // For analytics plugins, build multiple configuration forms.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type)
         ?? $this->getSelectedPluginsFromSettings($settings);
-      
+
       foreach ($selected_plugin_ids as $plugin_id) {
         if (!empty($plugin_id) && $plugin_id !== 'null') {
           $selected_plugins = array_filter(
@@ -190,7 +201,7 @@ trait PluginSelectionFormTrait {
       // For other plugins (like variants), build single configuration form.
       $selected_plugin_id = $this->getSelectedPluginFromFormState($form_state, $plugin_type)
         ?? ($settings['id'] ?? 'null');
-      
+
       if (!empty($selected_plugin_id) && $selected_plugin_id !== 'null') {
         $selected_plugins = array_filter(
           $plugins,
@@ -259,18 +270,17 @@ trait PluginSelectionFormTrait {
 
     // If this is an AJAX request and the triggering element is the plugin
     // selector.
-    if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'settings') {
-      $plugin_id = $form_state->getValue(array_merge([
+    if ($triggering_element && isset($triggering_element['#parents']) && end($triggering_element['#parents']) === 'id') {
+      return $form_state->getValue([
         'ab_tests',
         $plugin_type,
-        'settings',
-      ]));
-      return $plugin_id;
+        'id',
+      ]);
     }
 
     // Try to get from values if the form has been submitted.
-    if ($form_state->hasValue(['ab_tests', $plugin_type, 'settings'])) {
-      return $form_state->getValue(['ab_tests', $plugin_type, 'settings']);
+    if ($form_state->hasValue(['ab_tests', $plugin_type, 'id'])) {
+      return $form_state->getValue(['ab_tests', $plugin_type, 'id']);
     }
 
     return NULL;
@@ -412,7 +422,7 @@ trait PluginSelectionFormTrait {
     if ($plugin_type_id === 'analytics') {
       // For analytics plugins, validate all selected plugins.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type_id);
-      
+
       foreach ($selected_plugin_ids as $plugin_id) {
         if (!$plugin_id) {
           continue;
@@ -514,16 +524,16 @@ trait PluginSelectionFormTrait {
    */
   protected function updatePluginConfiguration(array $form, FormStateInterface $form_state, string $plugin_type_id): array {
     $settings = [];
-    
+
     if ($plugin_type_id === 'analytics') {
       // For analytics plugins, handle multiple plugins.
       $selected_plugin_ids = $this->getSelectedPluginsFromFormState($form_state, $plugin_type_id);
-      
+
       foreach ($selected_plugin_ids as $plugin_id) {
         if (!$plugin_id) {
           continue;
         }
-        
+
         // Check if the plugin has a configuration form.
         if (!isset($form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'])) {
           // Store plugin without configuration.
@@ -559,7 +569,7 @@ trait PluginSelectionFormTrait {
           $settings[$plugin_type_id][$plugin_id]['id'] = $plugin_id;
           continue;
         }
-        
+
         // Create subform state and submit form.
         $element = $form['ab_tests'][$plugin_type_id]['config_wrapper'][$plugin_id . '_settings'];
         $subform_state = SubformState::createForSubform($element, $form, $form_state);

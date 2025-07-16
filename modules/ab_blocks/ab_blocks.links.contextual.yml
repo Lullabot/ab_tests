@@ -1,0 +1,9 @@
+ab_blocks.ab_blocks:
+  title: 'A/B Testing'
+  route_name: ab_blocks.manage_ab_testing_block
+  group: layout_builder_block
+  options:
+    attributes:
+      class: ['use-ajax']
+      data-dialog-type: dialog
+      data-dialog-renderer: off_canvas

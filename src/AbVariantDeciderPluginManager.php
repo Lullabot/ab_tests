@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
-use Drupal\ab_tests\Annotation\AbVariantDecider;
+use Drupal\ab_tests\Annotation\AbVariantDecider as AbVariantDeciderAnnotation;
+use Drupal\ab_tests\Attribute\AbVariantDecider as AbVariantDeciderAttribute;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Render\MarkupInterface;
 use Drupal\Core\Cache\CacheBackendInterface;
@@ -23,7 +24,14 @@ final class AbVariantDeciderPluginManager extends DefaultPluginManager implement
    * Constructs the object.
    */
   public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler) {
-    parent::__construct('Plugin/AbVariantDecider', $namespaces, $module_handler, AbVariantDeciderInterface::class, AbVariantDecider::class);
+    parent::__construct(
+      'Plugin/AbVariantDecider',
+      $namespaces,
+      $module_handler,
+      AbVariantDeciderInterface::class,
+      AbVariantDeciderAttribute::class,
+      AbVariantDeciderAnnotation::class,
+    );
     $this->alterInfo('ab_variant_decider_info');
     $this->setCacheBackend($cache_backend, 'ab_variant_decider_plugins');
   }

@@ -1,0 +1,50 @@
+((Drupal, once) => {
+  /**
+   * Behavior to initialize timeout decider.
+   */
+  Drupal.behaviors.abVariantDeciderTimeout = {
+    attach(context, settings) {
+      const abTestsSettings = settings?.ab_tests || {};
+      const { deciderSettings, debug = false } = abTestsSettings;
+
+      if (!deciderSettings?.experimentsSelector) {
+        return;
+      }
+
+      const elements = once(
+        'ab-variant-decider-timeout',
+        deciderSettings.experimentsSelector,
+        context,
+      );
+
+      const abTestsManager = new AbTestsManager();
+      elements.forEach(element => {
+        if (!deciderSettings) {
+          return;
+        }
+
+        // Extract enabled variants from settings.
+        const availableVariants = deciderSettings?.availableVariants || [];
+
+        if (!availableVariants.length) {
+          return;
+        }
+
+        const timeoutConfig = deciderSettings?.timeout || {};
+        const config = {
+          minTimeout: parseInt(timeoutConfig?.min, 10) || 1000,
+          maxTimeout: parseInt(timeoutConfig?.max, 10) || 5000,
+        };
+
+        const decider = new TimeoutDecider(availableVariants, config);
+
+        abTestsManager.registerDecider(
+          element,
+          decider,
+          abTestsSettings,
+          debug,
+        );
+      });
+    },
+  };
+})(Drupal, once);

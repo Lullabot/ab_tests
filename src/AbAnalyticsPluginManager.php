@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
-use Drupal\ab_tests\Annotation\AbAnalytics;
+use Drupal\ab_tests\Annotation\AbAnalytics as AbAnalyticsAnnotation;
+use Drupal\ab_tests\Attribute\AbAnalytics as AbAnalyticsAttribute;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Render\MarkupInterface;
 use Drupal\Core\Cache\CacheBackendInterface;
@@ -23,7 +24,14 @@ final class AbAnalyticsPluginManager extends DefaultPluginManager implements UiP
    * Constructs the object.
    */
   public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler) {
-    parent::__construct('Plugin/AbAnalytics', $namespaces, $module_handler, AbAnalyticsInterface::class, AbAnalytics::class);
+    parent::__construct(
+      'Plugin/AbAnalytics',
+      $namespaces,
+      $module_handler,
+      AbAnalyticsInterface::class,
+      AbAnalyticsAttribute::class,
+      AbAnalyticsAnnotation::class,
+    );
     $this->alterInfo('ab_analytics_info');
     $this->setCacheBackend($cache_backend, 'ab_analytics_plugins');
   }
