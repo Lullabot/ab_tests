@@ -9,7 +9,9 @@
             "email": "mateu@mateuaguilo.com"
         }
     ],
-    "require": {},
+    "require": {
+        "justinrainbow/json-schema": "^6.4"
+    },
     "require-dev": {
         "drupal/coder": "^8"
     },

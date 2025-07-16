@@ -30,22 +30,10 @@
           return;
         }
 
-        // Add validation for timeout configuration
         const timeoutConfig = deciderSettings?.timeout || {};
-        if (
-          typeof timeoutConfig.min !== 'number' ||
-          typeof timeoutConfig.max !== 'number'
-        ) {
-          console.warn(
-            '[A/B Tests] Invalid timeout configuration, using defaults',
-          );
-          timeoutConfig.min = 1000;
-          timeoutConfig.max = 5000;
-        }
-
         const config = {
-          minTimeout: timeoutConfig.min,
-          maxTimeout: timeoutConfig.max,
+          minTimeout: parseInt(timeoutConfig?.min, 10) || 1000,
+          maxTimeout: parseInt(timeoutConfig?.max, 10) || 5000,
         };
 
         const decider = new TimeoutDecider(availableVariants, config);

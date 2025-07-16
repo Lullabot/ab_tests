@@ -224,29 +224,6 @@ class AbTestsHooks {
   }
 
   /**
-   * Implements hook_preprocess_node().
-   *
-   * Sets the 'page' variable to TRUE when re-rendering the node via Ajax.
-   */
-  #[Hook('preprocess_node')]
-  public function preprocessNode(&$variables): void {
-    $route_name = $this->requestStack->getCurrentRequest()
-      ->get(RouteObjectInterface::ROUTE_NAME);
-    if ($route_name !== 'ab_tests.render_variant') {
-      return;
-    }
-    $entity = $variables['node'] ?? NULL;
-    if (!$entity instanceof EntityInterface) {
-      return;
-    }
-    if (!$this->isFullPageEntity($entity)) {
-      return;
-    }
-    // We are dealing with the re-render of the A/B test.
-    $variables['page'] = TRUE;
-  }
-
-  /**
    * Implements hook_form_BASE_FORM_ID_alter().
    */
   #[Hook('form_node_type_form_alter')]

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
-use Drupal\ab_tests\Annotation\AbAnalytics;
+use Drupal\ab_tests\Annotation\AbAnalytics as AbAnalyticsAnnotation;;
 use Drupal\ab_tests\Attribute\AbAnalytics as AbAnalyticsAttribute;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Render\MarkupInterface;
@@ -24,7 +24,14 @@ final class AbAnalyticsPluginManager extends DefaultPluginManager implements UiP
    * Constructs the object.
    */
   public function __construct(\Traversable $namespaces, CacheBackendInterface $cache_backend, ModuleHandlerInterface $module_handler) {
-    parent::__construct('Plugin/AbAnalytics', $namespaces, $module_handler, AbAnalyticsInterface::class, AbAnalytics::class, AbAnalyticsAttribute::class);
+    parent::__construct(
+      'Plugin/AbAnalytics',
+      $namespaces,
+      $module_handler,
+      AbAnalyticsInterface::class,
+      AbAnalyticsAttribute::class,
+      AbAnalyticsAnnotation::class,
+    );
     $this->alterInfo('ab_analytics_info');
     $this->setCacheBackend($cache_backend, 'ab_analytics_plugins');
   }
@@ -35,12 +42,12 @@ final class AbAnalyticsPluginManager extends DefaultPluginManager implements UiP
   public function getPlugins(?array $plugin_ids = NULL, array $settings = []): array {
     if (is_null($plugin_ids)) {
       $definitions = $this->getDefinitions();
-      $plugin_ids = array_map(function ($definition) {
+      $plugin_ids = array_map(function($definition) {
         return empty($definition) ? NULL : $definition['id'];
       }, $definitions);
       $plugin_ids = array_filter(array_values($plugin_ids));
     }
-    $providers = array_map(function ($plugin_id) use ($settings) {
+    $providers = array_map(function($plugin_id) use ($settings) {
       try {
         return $this->createInstance($plugin_id, $settings[$plugin_id] ?? []);
       }

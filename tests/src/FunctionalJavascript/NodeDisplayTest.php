@@ -37,6 +37,9 @@ class NodeDisplayTest extends AbTestsFunctionalJavaScriptTestBase {
     $decider_settings = $settings['ab_tests']['deciderSettings'] ?? [];
     $this->assertEquals(['min' => 200, 'max' => 250], $decider_settings['timeout']);
     $this->assertEquals(['full', 'teaser'], $decider_settings['availableVariants']);
+    $this->assertEquals('[data-ab-tests-entity-root]', $decider_settings['experimentsSelector']);
+    $this->assertEquals('full', $settings['ab_tests']['features']['ab_view_modes']['defaultDecisionValue']);
+    $this->assertFalse($settings['ab_tests']['debug']);
   }
 
 }
