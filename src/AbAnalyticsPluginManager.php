@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\ab_tests;
 
-use Drupal\ab_tests\Annotation\AbAnalytics as AbAnalyticsAnnotation;;
+use Drupal\ab_tests\Annotation\AbAnalytics as AbAnalyticsAnnotation;
 use Drupal\ab_tests\Attribute\AbAnalytics as AbAnalyticsAttribute;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Render\MarkupInterface;
@@ -42,12 +42,12 @@ final class AbAnalyticsPluginManager extends DefaultPluginManager implements UiP
   public function getPlugins(?array $plugin_ids = NULL, array $settings = []): array {
     if (is_null($plugin_ids)) {
       $definitions = $this->getDefinitions();
-      $plugin_ids = array_map(function($definition) {
+      $plugin_ids = array_map(function ($definition) {
         return empty($definition) ? NULL : $definition['id'];
       }, $definitions);
       $plugin_ids = array_filter(array_values($plugin_ids));
     }
-    $providers = array_map(function($plugin_id) use ($settings) {
+    $providers = array_map(function ($plugin_id) use ($settings) {
       try {
         return $this->createInstance($plugin_id, $settings[$plugin_id] ?? []);
       }
