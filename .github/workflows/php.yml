@@ -93,6 +93,7 @@ jobs:
             sleep 2
           done
           echo "MySQL service is ready"
+          php ./vendor/bin/phpunit --version
 
       - name: Install Drupal
         run: |
@@ -108,8 +109,8 @@ jobs:
 #
       - name: Run Functional Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Functional
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript --debug
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript
