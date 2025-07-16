@@ -336,6 +336,7 @@ class AbTestsHooks {
       $settings['analytics'] ?? [],
       'analytics',
       $feature,
+      TRUE,
     );
 
     $form['#entity_builders'][] = [$this, 'entityBuilder'];
@@ -357,11 +358,12 @@ class AbTestsHooks {
     $settings = $form_state->getValue('ab_tests');
     unset($settings['variants'], $settings['analytics']);
     $settings = array_reduce(
-      ['variants', 'analytics'],
-      fn(array $settings, string $plugin_type_id) => $settings + $this->updatePluginConfiguration(
+      [['variants', FALSE], ['analytics', TRUE]],
+      fn(array $settings, array $plugin_info) => $settings + $this->updatePluginConfiguration(
           $form,
           $form_state,
-          $plugin_type_id,
+          $plugin_info[0],
+          $plugin_info[1],
         ),
       $settings,
     );
@@ -384,10 +386,10 @@ class AbTestsHooks {
     }
 
     // Validate the variant decider plugin form.
-    $this->validatePluginForm($form, $form_state, 'variants', 'decider');
+    $this->validatePluginForm($form, $form_state, 'variants');
 
     // Validate the analytics tracker plugin form.
-    $this->validatePluginForm($form, $form_state, 'analytics', 'tracker');
+    $this->validatePluginForm($form, $form_state, 'analytics', TRUE);
   }
 
 }
