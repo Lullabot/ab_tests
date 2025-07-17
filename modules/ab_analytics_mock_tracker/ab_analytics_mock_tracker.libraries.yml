@@ -1,0 +1,7 @@
+ab_analytics_tracker.mock2:
+  js:
+    js/ab-analytics-tracker-mock2.js: { }
+    js/MockTracker2.js: { }
+  dependencies:
+    - core/drupal
+    - ab_tests/ab_tests
