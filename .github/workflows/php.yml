@@ -101,6 +101,7 @@ jobs:
           
           # Then wait for the service to be ready to create sessions
           echo "Waiting for Chrome service to be ready for session creation..."
+          CHROME_SESSION_READY=false
           for i in {1..20}; do
             # Check if Chrome service is ready for session creation
             STATUS_RESPONSE=$(curl -s http://localhost:4444/wd/hub/status 2>/dev/null || echo "{}")
@@ -119,6 +120,7 @@ jobs:
                 if [ -n "$SESSION_ID" ]; then
                   curl -X DELETE http://localhost:4444/wd/hub/session/$SESSION_ID 2>/dev/null || true
                 fi
+                CHROME_SESSION_READY=true
                 break
               else
                 echo "Chrome service ready but cannot create sessions yet (attempt $i/20)"
@@ -128,7 +130,11 @@ jobs:
             fi
             sleep 3
           done
-
+          # Check if Chrome session creation actually succeeded
+          if [ "$CHROME_SESSION_READY" = false ]; then
+            echo "ERROR: Chrome service failed to become ready for session creation after 20 attempts"
+            exit 1
+          fi
           # Final verification of Chrome service
           if ! curl -sSf http://localhost:4444/wd/hub/status > /dev/null; then
             echo "Chrome service failed to start properly"
