@@ -15,7 +15,84 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
+          MYSQL_ROOT_PASSWORD: rootname: Tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  testing:
+    name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
+    runs-on: ubuntu-latest
+    services:
+      # Set up MySQL for Drupal installation
+      mysql:
+        image: mysql:8.0
+        env:
           MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: drupal
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      # Set up Chrome for JavaScript tests
+      chrome:
+        image: selenium/standalone-chrome:4.15.0
+        ports:
+          - 4444:4444
+        env:
+          SE_NODE_SESSION_TIMEOUT: 300
+          SE_NODE_OVERRIDE_MAX_SESSIONS: true
+          SE_NODE_MAX_SESSIONS: 3
+          SE_START_XVFB: true
+        options: --health-cmd="/opt/bin/check-grid.sh" --health-interval=15s --health-timeout=15s --health-retries=15 --shm-size=2g
+
+    strategy:
+      fail-fast: false
+      matrix:
+        drupal-core: [ '10.4.x', '11.0.x' ]
+        php-versions: [ '8.3' ]
+    steps:
+      - name: Checkout Drupal core
+        uses: actions/checkout@v4
+        with:
+          repository: drupal/drupal
+          ref: ${{ matrix.drupal-core }}
+
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: modules/ab_tests
+
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composercache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composercache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Drupal core dependencies
+        run: |
+          composer --no-interaction --no-progress --prefer-dist install
+
+      - name: Install module dev-dependencies
+        run: |
+          composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
+
+      - name: Check coding standards
+        run: |
+
           MYSQL_DATABASE: drupal
         ports:
           - 3306:3306
@@ -121,4 +198,4 @@ jobs:
           export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
           export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
           export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}, "http://localhost:4444"]'
-          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript
+          ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/FunctionalJavascript
