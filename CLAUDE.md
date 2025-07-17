@@ -153,6 +153,75 @@ The module supports excluding A/B test configurations from config export/import 
 - Block testing controller: `modules/ab_blocks/src/Controller/AjaxBlockRender.php`
 - Test base classes: `tests/src/AbTestsTestBaseTrait.php`, `tests/src/Functional/AbTestsFunctionalTestBase.php`
 
+## Commit Message Guidelines
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org) specification for commit messages.
+
+### Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+- **refactor**: A code change that neither fixes a bug nor adds a feature
+- **perf**: A code change that improves performance
+- **test**: Adding missing tests or correcting existing tests
+- **chore**: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- **ci**: Changes to CI configuration files and scripts
+- **build**: Changes that affect the build system or external dependencies
+
+### Scope (Optional)
+
+Scope provides additional contextual information:
+- **blocks**: Changes to ab_blocks sub-module
+- **analytics**: Changes to analytics tracking system
+- **deciders**: Changes to variant decider plugins
+- **js**: JavaScript-related changes
+- **workflow**: GitHub Actions workflow changes
+- **deps**: Dependency updates
+
+### Rules
+
+1. **Type and description are mandatory**
+2. **Use present tense** ("add feature" not "added feature")
+3. **Use imperative mood** ("move cursor to..." not "moves cursor to...")
+4. **Don't capitalize first letter** of description
+5. **No period at the end** of description
+6. **Body and footer are optional** but recommended for complex changes
+7. **Breaking changes** must be indicated with `!` after type/scope or in footer with `BREAKING CHANGE:`
+
+### Examples
+
+```
+feat(blocks): add support for hiding blocks in variants
+fix(js): resolve race condition in decision handler initialization
+docs: update plugin development guidelines
+ci(workflow): enhance error handling in PHP test workflow
+chore(deps): update drupal/coder to ^8.3.0
+feat!: remove deprecated analytics API
+```
+
+### Breaking Changes
+
+For breaking changes, use either:
+- `feat!: remove deprecated analytics API` 
+- Footer format:
+  ```
+  feat(analytics): redesign tracker interface
+  
+  BREAKING CHANGE: Analytics plugins must now implement the new TrackerInterface
+  ```
+
 ## Technical Execution Flow
 
 This section details the complete execution flow for both A/B testing features, covering server-side initialization, JavaScript decision-making, Ajax re-rendering, and analytics tracking.
