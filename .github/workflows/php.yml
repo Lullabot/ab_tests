@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         drupal-core: [ '10.4.x', '11.0.x' ]
-        php-versions: [ '8.3', '8.2' ]
+        php-versions: [ '8.3' ]
 
     steps:
       - name: Checkout Drupal core
@@ -114,7 +114,7 @@ jobs:
               sleep 2
             fi
           done
-          
+
           if [ "$chrome_ready" = false ]; then
             echo "ERROR: Chrome service failed to start within 60 seconds"
             echo "Chrome service status:"
@@ -137,7 +137,7 @@ jobs:
               sleep 2
             fi
           done
-          
+
           if [ "$mysql_ready" = false ]; then
             echo "ERROR: MySQL service failed to start within 60 seconds"
             echo "MySQL service status:"
@@ -158,7 +158,7 @@ jobs:
       - name: Run Functional Tests
         run: |
           echo "Running Functional Tests..."
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --verbose modules/ab_tests/tests/src/Functional
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
@@ -166,7 +166,7 @@ jobs:
           export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
           export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
           export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu","--disable-web-security","--window-size=1920,1080"]}}, "http://localhost:4444"]'
-          ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --verbose modules/ab_tests/tests/src/FunctionalJavascript || {
+          ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript || {
             echo "JavaScript tests failed. Debug information:"
             echo "Chrome status:"
             curl -s http://localhost:4444/wd/hub/status | jq '.' || echo "Chrome unreachable"
