@@ -1,0 +1,124 @@
+name: Tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  testing:
+    name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
+    runs-on: ubuntu-latest
+    
+    services:
+      # Set up MySQL for Drupal installation
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: drupal
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      
+      # Set up Chrome for JavaScript tests - MINIMAL CONFIGURATION
+      chrome:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 4444:4444
+        options: --shm-size=2g
+
+    strategy:
+      fail-fast: false
+      matrix:
+        drupal-core: [ '10.4.x', '11.0.x' ]
+        php-versions: [ '8.3' ]
+
+    steps:
+      - name: Checkout Drupal core
+        uses: actions/checkout@v4
+        with:
+          repository: drupal/drupal
+          ref: ${{ matrix.drupal-core }}
+
+      - name: Checkout module
+        uses: actions/checkout@v4
+        with:
+          path: modules/ab_tests
+
+      - name: Setup PHP, with composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composercache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composercache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Drupal core dependencies
+        run: |
+          composer --no-interaction --no-progress --prefer-dist install
+
+      - name: Install module dev-dependencies
+        run: |
+          composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
+
+      - name: Check coding standards
+        run: |
+          composer --working-dir=modules/ab_tests run lint:check
+
+      - name: Setup web server
+        run: |
+          php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
+
+      - name: Wait for services to be ready
+        run: |
+          # Wait for Chrome - SIMPLE CHECK ONLY
+          echo "Waiting for Chrome service to be ready..."
+          for i in {1..30}; do
+            if curl -f http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
+              echo "Chrome service is ready"
+              break
+            else
+              echo "Chrome service not ready yet (attempt $i/30)"
+              sleep 2
+            fi
+          done
+
+          # Wait for MySQL
+          echo "Waiting for MySQL service to be ready..."
+          for i in {1..30}; do
+            if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
+              echo "MySQL service is ready"
+              break
+            else
+              echo "MySQL service not ready yet (attempt $i/30)"
+              sleep 2
+            fi
+          done
+
+          echo "All services are ready"
+
+      - name: Install Drupal
+        run: |
+          php ./core/scripts/drupal install
+
+      - name: Run Functional Tests
+        run: |
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
+
+      - name: Run Functional JavaScript Tests
+        run: |
+          export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
+          export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
+          export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}, "http://localhost:4444"]'
+          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript
