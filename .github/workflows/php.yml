@@ -9,22 +9,6 @@ jobs:
   testing:
     name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
     runs-on: ubuntu-latest
-    
-    services:
-      # Set up MySQL for Drupal installation
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: rootname: Tests
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-jobs:
-  testing:
-    name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
-    runs-on: ubuntu-latest
     services:
       # Set up MySQL for Drupal installation
       mysql:
