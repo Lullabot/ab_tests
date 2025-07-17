@@ -35,65 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         drupal-core: [ '10.4.x', '11.0.x' ]
-        php-versions: [ '8.3' ]
-    steps:
-      - name: Checkout Drupal core
-        uses: actions/checkout@v4
-        with:
-          repository: drupal/drupal
-          ref: ${{ matrix.drupal-core }}
-
-      - name: Checkout module
-        uses: actions/checkout@v4
-        with:
-          path: modules/ab_tests
-
-      - name: Setup PHP, with composer and extensions
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php-versions }}
-          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets
-          coverage: none
-
-      - name: Get composer cache directory
-        id: composercache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composercache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Install Drupal core dependencies
-        run: |
-          composer --no-interaction --no-progress --prefer-dist install
-
-      - name: Install module dev-dependencies
-        run: |
-          composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
-
-      - name: Check coding standards
-        run: |
-
-          MYSQL_DATABASE: drupal
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-      
-      # Set up Chrome for JavaScript tests - MINIMAL CONFIGURATION
-      chrome:
-        image: selenium/standalone-chrome:latest
-        ports:
-          - 4444:4444
-        options: --shm-size=2g
-
-    strategy:
-      fail-fast: false
-      matrix:
-        drupal-core: [ '10.4.x', '11.0.x' ]
-        php-versions: [ '8.3' ]
+        php-versions: [ '8.3', '8.2' ]
 
     steps:
       - name: Checkout Drupal core
@@ -111,8 +53,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets
+          extensions: mbstring, xml, gd, opcache, mysql, curl, zip, sockets, intl
           coverage: none
+          ini-values: memory_limit=512M, max_execution_time=300
 
       - name: Get composer cache directory
         id: composercache
@@ -127,59 +70,107 @@ jobs:
 
       - name: Install Drupal core dependencies
         run: |
+          echo "Installing Drupal core dependencies..."
           composer --no-interaction --no-progress --prefer-dist install
+          echo "Drupal core dependencies installed"
 
       - name: Install module dev-dependencies
         run: |
+          echo "Installing module dev-dependencies..."
           composer --working-dir=modules/ab_tests --dev --no-interaction --no-progress install
+          echo "Module dev-dependencies installed"
 
       - name: Check coding standards
         run: |
+          echo "Checking coding standards..."
           composer --working-dir=modules/ab_tests run lint:check
+          echo "Coding standards check completed"
 
       - name: Setup web server
         run: |
+          echo "Starting PHP development server..."
           php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
+          sleep 2
+          echo "Web server started on http://127.0.0.1:8080"
+          # Verify server is running
+          if curl -f http://127.0.0.1:8080 >/dev/null 2>&1; then
+            echo "Web server is responding"
+          else
+            echo "WARNING: Web server may not be ready yet"
+          fi
 
       - name: Wait for services to be ready
         run: |
-          # Wait for Chrome - SIMPLE CHECK ONLY
+          # Wait for Chrome with improved error handling
           echo "Waiting for Chrome service to be ready..."
+          chrome_ready=false
           for i in {1..30}; do
             if curl -f http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
               echo "Chrome service is ready"
+              chrome_ready=true
               break
             else
               echo "Chrome service not ready yet (attempt $i/30)"
               sleep 2
             fi
           done
+          
+          if [ "$chrome_ready" = false ]; then
+            echo "ERROR: Chrome service failed to start within 60 seconds"
+            echo "Chrome service status:"
+            curl -v http://localhost:4444/wd/hub/status || echo "Chrome service unreachable"
+            echo "Docker logs for Chrome:"
+            docker logs $(docker ps -q --filter ancestor=selenium/standalone-chrome:4.15.0) 2>&1 | tail -20
+            exit 1
+          fi
 
-          # Wait for MySQL
+          # Wait for MySQL with improved error handling
           echo "Waiting for MySQL service to be ready..."
+          mysql_ready=false
           for i in {1..30}; do
             if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
               echo "MySQL service is ready"
+              mysql_ready=true
               break
             else
               echo "MySQL service not ready yet (attempt $i/30)"
               sleep 2
             fi
           done
+          
+          if [ "$mysql_ready" = false ]; then
+            echo "ERROR: MySQL service failed to start within 60 seconds"
+            echo "MySQL service status:"
+            mysql -h 127.0.0.1 -u root -proot -e "SHOW DATABASES" 2>&1 || echo "MySQL service unreachable"
+            echo "Docker logs for MySQL:"
+            docker logs $(docker ps -q --filter ancestor=mysql:8.0) 2>&1 | tail -20
+            exit 1
+          fi
 
           echo "All services are ready"
 
       - name: Install Drupal
         run: |
+          echo "Installing Drupal..."
           php ./core/scripts/drupal install
+          echo "Drupal installation completed"
 
       - name: Run Functional Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
+          echo "Running Functional Tests..."
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --verbose modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
+          echo "Running Functional JavaScript Tests..."
           export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
           export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
-          export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}, "http://localhost:4444"]'
-          ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/FunctionalJavascript
+          export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu","--disable-web-security","--window-size=1920,1080"]}}, "http://localhost:4444"]'
+          ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --verbose modules/ab_tests/tests/src/FunctionalJavascript || {
+            echo "JavaScript tests failed. Debug information:"
+            echo "Chrome status:"
+            curl -s http://localhost:4444/wd/hub/status | jq '.' || echo "Chrome unreachable"
+            echo "Web server status:"
+            curl -I http://127.0.0.1:8080 || echo "Web server unreachable"
+            exit 1
+          }
