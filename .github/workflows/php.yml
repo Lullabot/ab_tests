@@ -4,10 +4,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
   testing:
     name: Drupal ${{ matrix.drupal-core }} - PHP ${{ matrix.php-versions }}
     runs-on: ubuntu-latest
+    
     services:
       # Set up MySQL for Drupal installation
       mysql:
@@ -18,23 +20,20 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-      # Set up Chrome for JavaScript tests
+      
+      # Set up Chrome for JavaScript tests - MINIMAL CONFIGURATION
       chrome:
-        image: selenium/standalone-chrome:4.15.0
+        image: selenium/standalone-chrome:latest
         ports:
           - 4444:4444
-        env:
-          SE_NODE_SESSION_TIMEOUT: 300
-          SE_NODE_OVERRIDE_MAX_SESSIONS: true
-          SE_NODE_MAX_SESSIONS: 3
-          SE_START_XVFB: true
-        options: --health-cmd="/opt/bin/check-grid.sh" --health-interval=15s --health-timeout=15s --health-retries=15 --shm-size=2g
+        options: --shm-size=2g
 
     strategy:
       fail-fast: false
       matrix:
         drupal-core: [ '10.4.x', '11.0.x' ]
         php-versions: [ '8.3' ]
+
     steps:
       - name: Checkout Drupal core
         uses: actions/checkout@v4
@@ -80,71 +79,25 @@ jobs:
       - name: Setup web server
         run: |
           php -S 127.0.0.1:8080 -t . >/dev/null 2>&1 &
-          echo "pid=$!" >> $GITHUB_OUTPUT
-        id: server
 
       - name: Wait for services to be ready
         run: |
-          # Wait for Chrome to be ready with comprehensive health checks
+          # Wait for Chrome - SIMPLE CHECK ONLY
           echo "Waiting for Chrome service to be ready..."
-          
-          # First, wait for the service to be responding to status checks
           for i in {1..30}; do
-            if curl -sSf http://localhost:4444/wd/hub/status > /dev/null; then
-              echo "Chrome service is responding to status checks"
+            if curl -f http://localhost:4444/wd/hub/status >/dev/null 2>&1; then
+              echo "Chrome service is ready"
               break
             else
               echo "Chrome service not ready yet (attempt $i/30)"
-              sleep 3
+              sleep 2
             fi
           done
-          
-          # Then wait for the service to be ready to create sessions
-          echo "Waiting for Chrome service to be ready for session creation..."
-          CHROME_SESSION_READY=false
-          for i in {1..20}; do
-            # Check if Chrome service is ready for session creation
-            STATUS_RESPONSE=$(curl -s http://localhost:4444/wd/hub/status 2>/dev/null || echo "{}")
-            if echo "$STATUS_RESPONSE" | grep -q '"ready":true'; then
-              echo "Chrome service reports ready status"
-              
-              # Test session creation with W3C WebDriver standard
-              SESSION_RESPONSE=$(timeout 15 curl -X POST -H "Content-Type: application/json" \
-                -d '{"capabilities":{"alwaysMatch":{"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}}}' \
-                http://localhost:4444/wd/hub/session 2>/dev/null || echo "timeout")
-              
-              if echo "$SESSION_RESPONSE" | grep -q '"sessionId"'; then
-                echo "Chrome service is ready and can create sessions"
-                # Clean up the test session
-                SESSION_ID=$(echo "$SESSION_RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
-                if [ -n "$SESSION_ID" ]; then
-                  curl -X DELETE http://localhost:4444/wd/hub/session/$SESSION_ID 2>/dev/null || true
-                fi
-                CHROME_SESSION_READY=true
-                break
-              else
-                echo "Chrome service ready but cannot create sessions yet (attempt $i/20)"
-              fi
-            else
-              echo "Chrome service not ready for sessions yet (attempt $i/20)"
-            fi
-            sleep 3
-          done
-          # Check if Chrome session creation actually succeeded
-          if [ "$CHROME_SESSION_READY" = false ]; then
-            echo "ERROR: Chrome service failed to become ready for session creation after 20 attempts"
-            exit 1
-          fi
-          # Final verification of Chrome service
-          if ! curl -sSf http://localhost:4444/wd/hub/status > /dev/null; then
-            echo "Chrome service failed to start properly"
-            exit 1
-          fi
 
-          # Wait for MySQL to be ready
+          # Wait for MySQL
           echo "Waiting for MySQL service to be ready..."
           for i in {1..30}; do
-            if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" > /dev/null 2>&1; then
+            if mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" >/dev/null 2>&1; then
               echo "MySQL service is ready"
               break
             else
@@ -153,108 +106,19 @@ jobs:
             fi
           done
 
-          # Final verification of MySQL service
-          if ! mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" > /dev/null 2>&1; then
-            echo "MySQL service failed to start properly"
-            exit 1
-          fi
-
           echo "All services are ready"
-          php ./vendor/bin/phpunit --version
 
       - name: Install Drupal
         run: |
           php ./core/scripts/drupal install
 
-      - name: Create WebDriver test retry script
-        run: |
-          cat > webdriver_test_retry.sh << 'EOF'
-          #!/bin/bash
-          set -e
-
-          # WebDriver connection test using W3C WebDriver standard
-          echo "Testing WebDriver connection before running tests..."
-          for i in {1..5}; do
-            echo "WebDriver connection test attempt $i/5..."
-            TEST_RESPONSE=$(timeout 30 curl -X POST -H "Content-Type: application/json" \
-              -d '{"capabilities":{"alwaysMatch":{"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}}}' \
-              http://localhost:4444/wd/hub/session 2>/dev/null || echo "timeout")
-            
-            if echo "$TEST_RESPONSE" | grep -q '"sessionId"'; then
-              echo "WebDriver connection test successful!"
-              # Clean up test session
-              TEST_SESSION_ID=$(echo "$TEST_RESPONSE" | grep -o '"sessionId":"[^"]*"' | cut -d'"' -f4)
-              if [ -n "$TEST_SESSION_ID" ]; then
-                curl -X DELETE http://localhost:4444/wd/hub/session/$TEST_SESSION_ID 2>/dev/null || true
-              fi
-              break
-            else
-              echo "WebDriver connection test failed, retrying in 5 seconds..."
-              sleep 5
-            fi
-          done
-
-          # Run tests with retry logic
-          export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
-          export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
-          export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding", "--disable-features=TranslateUI", "--disable-default-apps", "--no-first-run", "--disable-web-security", "--disable-features=VizDisplayCompositor", "--remote-debugging-port=9222", "--disable-ipc-flooding-protection"]},"timeout":60000,"idle_timeout":60000,"connection_timeout":60000},"http://localhost:4444/wd/hub"]'
-
-          # Run tests with retry on failure
-          for i in {1..3}; do
-            echo "Running Functional JavaScript Tests (attempt $i/3)..."
-            if timeout 600 ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript; then
-              echo "Tests passed successfully!"
-              exit 0
-            else
-              echo "Tests failed on attempt $i/3"
-              if [ $i -lt 3 ]; then
-                echo "Retrying in 10 seconds..."
-                sleep 10
-              fi
-            fi
-          done
-
-          echo "All test attempts failed"
-          exit 1
-          EOF
-          chmod +x webdriver_test_retry.sh
-
-      - name: Debug WebDriver and Service Status
-        run: |
-          echo "=== Service Status Debug ==="
-          echo "Chrome service status:"
-          curl -s http://localhost:4444/wd/hub/status | jq . || echo "Failed to get Chrome status"
-          echo ""
-          echo "Chrome service sessions:"
-          curl -s http://localhost:4444/wd/hub/sessions | jq . || echo "Failed to get Chrome sessions"
-          echo ""
-          echo "Docker container status:"
-          docker ps || echo "Docker not available"
-          echo ""
-          echo "Network connectivity test:"
-          ping -c 3 localhost || echo "Ping failed"
-          echo ""
-          echo "Port connectivity test:"
-          nc -zv localhost 4444 || echo "Port 4444 not reachable"
-          echo ""
-          echo "System resources:"
-          free -h || echo "Memory check failed"
-          df -h || echo "Disk check failed"
-          echo ""
-          echo "=== End Debug ==="
-
-      #      - name: Run Unit Tests
-      #        run: |
-      #          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Unit
-      #
-      #      - name: Run Kernel Tests
-      #        run: |
-      #          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Kernel
-      #
       - name: Run Functional Tests
         run: |
           SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
-          ./webdriver_test_retry.sh
+          export SIMPLETEST_BASE_URL=http://127.0.0.1:8080
+          export SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal
+          export MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--headless","--no-sandbox","--disable-dev-shm-usage","--disable-gpu"]}}, "http://localhost:4444"]'
+          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/FunctionalJavascript
