@@ -20,6 +20,7 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Hook\Attribute\Hook;
 use Drupal\Core\Link;
+use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\node\Entity\NodeType;
@@ -113,7 +114,6 @@ class AbTestsHooks {
    *   FALSE otherwise.
    */
   private function isFullPageEntity(EntityInterface $entity): bool {
-    // @todo Use the PageService from PH Tools to achieve this.
     $request = $this->requestStack->getCurrentRequest();
     $page_entity = $request
       ->get($entity->getEntityTypeId());
@@ -166,27 +166,33 @@ class AbTestsHooks {
     }
     // Do not affect the Ajax re-render of the entity.
     if ($this->routeMatch->getRouteName() === 'ab_tests.render_variant') {
-      // Attach the library from the analytics tracker.
-      $analytics_tracker_id = $settings['analytics']['id'] ?? 'null';
-      try {
-        $analytics_tracker = $this->analyticsManager->createInstance(
-          $analytics_tracker_id,
-          $settings['analytics']['settings'] ?? [],
-        );
-        assert($analytics_tracker instanceof AbAnalyticsInterface);
-        $tracker_build = $analytics_tracker->toRenderable();
-      }
-      catch (PluginException $e) {
-        $tracker_build = [
-          '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
-        ];
-      }
-      $build['ab_tests_tracker'] = $tracker_build;
-      $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $tracker_build['#attached'] ?? []);
-      $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+      // Attach libraries from all analytics trackers.
+      $analytics_settings = $settings['analytics'] ?? [];
+      $metadata = array_reduce(
+        $analytics_settings,
+        function (BubbleableMetadata $metadata, array $tracker_config) {
+          $tracker_id = $tracker_config['id'] ?? NULL;
+          if (!$tracker_id) {
+            return $metadata;
+          }
+          $tracker_settings = $tracker_config['settings'] ?? [];
+          try {
+            $analytics_tracker = $this->analyticsManager->createInstance(
+              $tracker_id,
+              $tracker_settings,
+            );
+            assert($analytics_tracker instanceof AbAnalyticsInterface);
+            $metadata->addCacheableDependency(BubbleableMetadata::createFromRenderArray($analytics_tracker->toRenderable()));
+          }
+          catch (PluginException $e) {
+          }
+          return $metadata;
+        },
+        new BubbleableMetadata(),
+      );
 
-      $build['ab_tests_tracker'] = $tracker_build;
-      unset($build['ab_tests_tracker']['#attached']);
+      $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $metadata->getAttachments());
+      $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
       return;
     }
     if (!$this->isFullPageEntity($entity)) {
@@ -308,6 +314,7 @@ class AbTestsHooks {
       $settings['analytics'] ?? [],
       'analytics',
       $feature,
+      TRUE,
     );
 
     $form['#entity_builders'][] = [$this, 'entityBuilder'];
@@ -329,11 +336,12 @@ class AbTestsHooks {
     $settings = $form_state->getValue('ab_tests');
     unset($settings['variants'], $settings['analytics']);
     $settings = array_reduce(
-      ['variants', 'analytics'],
-      fn(array $settings, string $plugin_type_id) => $settings + $this->updatePluginConfiguration(
+      [['variants', FALSE], ['analytics', TRUE]],
+      fn(array $settings, array $plugin_info) => $settings + $this->updatePluginConfiguration(
           $form,
           $form_state,
-          $plugin_type_id,
+          $plugin_info[0],
+          $plugin_info[1],
         ),
       $settings,
     );
@@ -356,10 +364,10 @@ class AbTestsHooks {
     }
 
     // Validate the variant decider plugin form.
-    $this->validatePluginForm($form, $form_state, 'variants', 'decider');
+    $this->validatePluginForm($form, $form_state, 'variants');
 
     // Validate the analytics tracker plugin form.
-    $this->validatePluginForm($form, $form_state, 'analytics', 'tracker');
+    $this->validatePluginForm($form, $form_state, 'analytics', TRUE);
   }
 
 }

@@ -57,11 +57,13 @@ abstract class AbAnalyticsPluginBase extends PluginBase implements AbAnalyticsIn
    * {@inheritdoc}
    */
   public function toRenderable($additional_settings = []): array {
+    $analytics_library = $this->getPluginDefinition()['analytics_library'] ?? 'ab_analytics_tracker.null';
+    $library_provider = explode('/', $analytics_library)[0];
     return [
       '#attached' => [
-        'library' => [$this->pluginDefinition['analytics_library'] ?? 'ab_tests/ab_variant_decider.null'],
+        'library' => [$analytics_library],
         'drupalSettings' => [
-          'ab_tests' => [
+          $library_provider => [
             'analyticsSettings' => $this->getJavaScriptSettings() + $additional_settings,
           ],
         ],

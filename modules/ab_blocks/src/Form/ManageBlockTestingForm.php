@@ -148,6 +148,7 @@ class ManageBlockTestingForm extends FormBase {
       $settings['analytics'] ?? [],
       'analytics',
       $feature,
+      TRUE,
     );
 
     // Workaround for core bug:
@@ -176,10 +177,10 @@ class ManageBlockTestingForm extends FormBase {
     }
 
     // Validate the variant decider plugin form.
-    $this->validatePluginForm($form, $form_state, 'variants', 'decider');
+    $this->validatePluginForm($form, $form_state, 'variants');
 
     // Validate the analytics tracker plugin form.
-    $this->validatePluginForm($form, $form_state, 'analytics', 'tracker');
+    $this->validatePluginForm($form, $form_state, 'analytics', TRUE);
   }
 
   /**
@@ -189,11 +190,12 @@ class ManageBlockTestingForm extends FormBase {
     $additional_settings = $form_state->getValue('ab_tests');
     unset($additional_settings['variants'], $additional_settings['analytics']);
     $additional_settings = array_reduce(
-      ['variants', 'analytics'],
-      fn(array $additional_settings, string $plugin_type_id) => $additional_settings + $this->updatePluginConfiguration(
+      [['variants', FALSE], ['analytics', TRUE]],
+      fn(array $additional_settings, array $plugin_info) => $additional_settings + $this->updatePluginConfiguration(
           $form,
           $form_state,
-          $plugin_type_id,
+          $plugin_info[0],
+          $plugin_info[1],
         ),
       $additional_settings,
     );
