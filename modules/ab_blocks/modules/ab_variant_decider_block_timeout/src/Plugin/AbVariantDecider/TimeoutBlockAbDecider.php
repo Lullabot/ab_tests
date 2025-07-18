@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Drupal\ab_variant_decider_block_timeout\Plugin\AbVariantDecider;
 
+use Drupal\ab_tests\Attribute\AbVariantDecider;
 use Drupal\ab_tests\Plugin\AbVariantDecider\TimeoutAbDeciderBase;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * Plugin implementation of the ab_variant_decider.
- *
- * @AbVariantDecider(
- *   id = "timeout_block",
- *   label = @Translation("Timeout (Block)"),
- *   description = @Translation("A/B variant decider based on a random timeout."),
- *   supported_features = {"ab_blocks"},
- *   decider_library = "ab_tests/ab_variant_decider.timeout",
- * )
  */
+#[AbVariantDecider(
+  id: 'timeout_block',
+  label: new TranslatableMarkup('Timeout (Block)'),
+  description: new TranslatableMarkup('A/B variant decider based on a random timeout.'),
+  supported_features: ['ab_blocks'],
+  decider_library: 'ab_tests/ab_variant_decider.timeout',
+)]
 class TimeoutBlockAbDecider extends TimeoutAbDeciderBase {
 
   /**

@@ -15,22 +15,28 @@ final class AbVariantDecider extends Plugin {
 
   /**
    * The plugin ID.
+   *
+   * @var string
    */
-  public readonly string $id;
+  public string $id;
 
   /**
    * The human-readable name of the plugin.
    *
+   * @var \Drupal\Core\Annotation\Translation
+   *
    * @ingroup plugin_translatable
    */
-  public readonly string $title;
+  public $label;
 
   /**
    * The description of the plugin.
    *
+   * @var \Drupal\Core\Annotation\Translation
+   *
    * @ingroup plugin_translatable
    */
-  public readonly string $description;
+  public $description;
 
   /**
    * Supported features.
@@ -45,7 +51,9 @@ final class AbVariantDecider extends Plugin {
 
   /**
    * The library that will decide the variant using JS.
+   *
+   * @var string
    */
-  public readonly string $decider_library;
+  public string $decider_library;
 
 }

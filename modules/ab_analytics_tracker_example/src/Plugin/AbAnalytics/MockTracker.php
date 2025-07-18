@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace Drupal\ab_analytics_tracker_example\Plugin\AbAnalytics;
 
 use Drupal\ab_tests\AbAnalyticsPluginBase;
+use Drupal\ab_tests\Attribute\AbAnalytics;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * MockTracker analytics provider.
- *
- * @AbAnalytics(
- *   id = "mock_tracker",
- *   label = @Translation("Mock Tracker"),
- *   description = @Translation("Example analytics provider for testing"),
- *   analytics_library = "ab_analytics_tracker_example/ab_analytics_tracker.mock"
- * )
  */
+#[AbAnalytics(
+  id: 'mock_tracker',
+  label: new TranslatableMarkup('Mock Tracker'),
+  description: new TranslatableMarkup('Example analytics provider for testing'),
+  analytics_library: 'ab_analytics_tracker_example/ab_analytics_tracker.mock',
+)]
 class MockTracker extends AbAnalyticsPluginBase {
 
   /**
