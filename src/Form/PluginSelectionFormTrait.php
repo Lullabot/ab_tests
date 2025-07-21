@@ -112,7 +112,7 @@ trait PluginSelectionFormTrait {
       ? $settings
       : array_map(
         static fn (string $selected_plugin_id) => $settings,
-        $selected_plugin_ids,
+        array_combine($selected_plugin_ids, $selected_plugin_ids),
       );
     // List all plugins with settings for selected ones.
     $plugin_settings = array_reduce(
