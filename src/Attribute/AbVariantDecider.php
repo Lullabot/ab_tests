@@ -35,8 +35,6 @@ final class AbVariantDecider extends Plugin {
     public readonly ?TranslatableMarkup $description = NULL,
     public readonly array $supported_features = [],
     public readonly string $decider_library = '',
-  ) {
-    parent::__construct($id);
-  }
+  ) {}
 
 }

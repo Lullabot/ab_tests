@@ -35,8 +35,6 @@ class AbAnalytics extends Plugin {
     public readonly ?TranslatableMarkup $description = NULL,
     public readonly array $supported_features = [],
     public readonly string $analytics_library = '',
-  ) {
-    parent::__construct($id);
-  }
+  ) {}
 
 }
