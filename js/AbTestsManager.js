@@ -68,11 +68,8 @@ class AbTestsManager {
     tracker.setStatus(status);
     element.setAttribute('data-ab-tests-tracker-status', status);
     // Start the tracking process.
-    const eventInfo = {
-      tracker,
-      decision: element.getAttribute('data-ab-tests-decision'),
-    };
-    return this._doTrack(element, eventInfo, debug);
+    const trackingInfo = element.getAttribute('data-ab-tests-tracking-info');
+    return this._doTrack(element, tracker, trackingInfo, debug);
   }
 
   /**
@@ -98,7 +95,7 @@ class AbTestsManager {
       decision = await decider.decide(element);
       status = 'success';
       debug &&
-        console.debug('[A/B Tests]', 'A decision was reached.', decision);
+      console.debug('[A/B Tests]', 'A decision was reached.', decision);
       await decisionHandler.handleDecision(element, decision);
     } catch (error) {
       status = 'error';
@@ -119,22 +116,20 @@ class AbTestsManager {
    *
    * @param {HTMLElement} element
    *   The element.
-   * @param {Object} eventInfo
-   *   The event info object.
-   * @param {BaseTracker} eventInfo.tracker
+   * @param {BaseTracker} tracker
    *   The tracker instance that implements track().
-   * @param {Decision} eventInfo.decision
-   *   The decision object.
+   * @param {string} trackingInfo
+   *   Additional tracking information.
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
    * @return {Promise<Decision>}
    *   Resolves with the tracking made.
    */
-  async _doTrack(element, { tracker, decision }, debug) {
+  async _doTrack(element, tracker, trackingInfo, debug) {
     try {
       debug && console.debug('[A/B Tests]', 'Tracking is about to start.');
-      const result = await tracker.track(decision, element);
+      const result = await tracker.track(trackingInfo, element);
       const status = 'success';
       tracker.setStatus(status);
       element.setAttribute('data-ab-tests-tracker-status', status);

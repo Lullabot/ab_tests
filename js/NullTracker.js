@@ -5,7 +5,7 @@ class NullTracker extends BaseTracker {
   /**
    * @inheritDoc
    */
-  track(decision, element) {
+  track(trackingInfo, element) {
     return Promise.reject(new Error('NullTracker: No tracking configured'));
   }
 }

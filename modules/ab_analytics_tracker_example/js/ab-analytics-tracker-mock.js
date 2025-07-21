@@ -6,7 +6,7 @@
     async attach(context, settings) {
       if (
         context instanceof Document ||
-        !context.hasAttribute('data-ab-tests-decision')
+        !context.hasAttribute('data-ab-tests-tracking-info')
       ) {
         return;
       }

@@ -9,17 +9,20 @@ use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
-use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
-use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
-use Drupal\Core\Plugin\ContextAwarePluginInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
+use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
+use Drupal\layout_builder\Section;
+use Drupal\layout_builder\SectionComponent;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -36,11 +39,16 @@ final class AjaxBlockRender extends ControllerBase {
    *   The block manager.
    * @param \Drupal\Core\TypedData\TypedDataManagerInterface $typedDataManager
    *   The typed data manager.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory.
+   * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
+   *   The entity display repository.
    */
   public function __construct(
     protected RendererInterface $renderer,
     protected BlockManagerInterface $blockManager,
     protected TypedDataManagerInterface $typedDataManager,
+    protected EntityDisplayRepositoryInterface $entityDisplayRepository,
   ) {}
 
   /**
@@ -51,6 +59,7 @@ final class AjaxBlockRender extends ControllerBase {
       $container->get('renderer'),
       $container->get('plugin.manager.block'),
       $container->get('typed_data_manager'),
+      $container->get('entity_display.repository'),
     );
   }
 
@@ -72,7 +81,12 @@ final class AjaxBlockRender extends ControllerBase {
    * @throws \Drupal\Component\Plugin\Exception\ContextException
    * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
-  public function __invoke(string $plugin_id, string $placement_id, string $encoded_config, string $encoded_contexts): CacheableAjaxResponse {
+  public function __invoke(
+    string $plugin_id,
+    string $placement_id,
+    string $encoded_config,
+    string $encoded_contexts,
+  ): CacheableAjaxResponse {
     $response = new CacheableAjaxResponse();
     $json_config = base64_decode($encoded_config);
     $json_contexts = base64_decode($encoded_contexts);
@@ -84,21 +98,56 @@ final class AjaxBlockRender extends ControllerBase {
       return $response;
     }
     $context_values = $this->deserializeContextValues($serialized_context_values);
-    $block = $this->createBlockPluginInstance($plugin_id, $configuration, $context_values);
-    assert($block instanceof ContextAwarePluginInterface);
-    $build = $this->renderAsBlock($block, $placement_id);
+    $entities = array_filter(
+      $context_values,
+      static fn($context) => $context instanceof ContentEntityInterface,
+    );
+
+    $section_component = array_reduce(
+      $entities,
+      fn (?SectionComponent $component, ContentEntityInterface $entity): ?SectionComponent =>
+        $component ?: $this->findLayoutBuilderComponent($entity, $placement_id),
+    );
+
+    // If no section component found, return empty response.
+    if (!$section_component) {
+      return $response;
+    }
+
+    try {
+      $settings = $section_component->get('additional')['ab_tests'] ?? [];
+      $settings['debug'] = $this->config('ab_tests.settings')
+        ->get('debug_mode');
+      $section_component->setConfiguration($configuration);
+      $build = $section_component->toRenderArray($context_values);
+      // This is used in the analytics plugins (js) to detect the block to
+      // track.
+      $build['#attributes']['data-ab-tests-tracking-info'] = $placement_id;
+    }
+    catch (\Exception $e) {
+      // If configuration or build creation fails, return an empty  response.
+      return $response;
+    }
+
     $context = new RenderContext();
-    $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
-      return $this->renderer->render($build);
-    });
+    try {
+      $html = $this->renderer->executeInRenderContext($context, function() use ($build) {
+        return $this->renderer->render($build);
+      });
+    }
+    catch (\Exception $e) {
+      // If rendering fails, return empty response.
+      return $response;
+    }
 
     $metadata_from_render = $context->pop();
-    assert($metadata_from_render instanceof BubbleableMetadata);
-    $attachments_from_render = $metadata_from_render->getAttachments();
-    // Add caching information for the render metadata.
-    $response->addCacheableDependency($metadata_from_render);
-    // Add the attachments from the render process.
-    $response->addAttachments($attachments_from_render);
+    if ($metadata_from_render instanceof BubbleableMetadata) {
+      $attachments_from_render = $metadata_from_render->getAttachments();
+      // Add caching information for the render metadata.
+      $response->addCacheableDependency($metadata_from_render);
+      // Add the attachments from the render process.
+      $response->addAttachments($attachments_from_render);
+    }
 
     $dependency = new BubbleableMetadata();
     $dependency->addCacheContexts([
@@ -113,78 +162,6 @@ final class AjaxBlockRender extends ControllerBase {
     // replace the element making the Ajax call.
     $response->addCommand(new InsertCommand(NULL, $html));
     return $response;
-  }
-
-  /**
-   * Simulates the block view builder for a block plugin.
-   *
-   * This is necessary to have HTML parity with the non-AJAX version of the
-   * block.
-   *
-   * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $block
-   *   The block plugin.
-   * @param string $placement_id
-   *   The placement ID.
-   *
-   * @return array
-   *   The render array.
-   *
-   * @see \Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray
-   */
-  protected function renderAsBlock(ContextAwarePluginInterface $block, string $placement_id): array {
-    $access = $block->access($this->currentUser(), TRUE);
-    if (!$access->isAllowed()) {
-      return [];
-    }
-    $cache_metadata = new CacheableMetadata();
-    $cache_metadata->addCacheableDependency($block);
-    $content = $block->build();
-    $cache_metadata->addCacheableDependency(CacheableMetadata::createFromRenderArray($content));
-    $build = [
-      // This may be moved to BlockBase in https://www.drupal.org/node/2931040.
-      '#theme' => 'block',
-      '#configuration' => $block->getConfiguration(),
-      '#plugin_id' => $block->getPluginId(),
-      '#base_plugin_id' => $block->getBaseId(),
-      '#derivative_plugin_id' => $block->getDerivativeId(),
-      '#in_preview' => FALSE,
-    ];
-
-    if (isset($content['#attributes'])) {
-      $build['#attributes'] = $content['#attributes'];
-      unset($content['#attributes']);
-    }
-    $build['#attributes']['data-ab-blocks-placement-id'] = $placement_id;
-    $build['#attributes']['data-ab-blocks-rendered-via'] = 'ajax';
-    $build['#attributes']['class'] = ['block__ab-testable-block'];
-    $build['content'] = $content;
-    return $build;
-  }
-
-  /**
-   * Instantiate a block plugin based on ID, config, and context.
-   *
-   * @param string $plugin_id
-   *   The block plugin ID.
-   * @param array $configuration
-   *   The block configuration, including core's default keys.
-   * @param array $context_values
-   *   The associative array containing context values.
-   *
-   * @return \Drupal\Core\Block\BlockPluginInterface
-   *   The block plugin.
-   *
-   * @throws \Drupal\Component\Plugin\Exception\ContextException
-   * @throws \Drupal\Component\Plugin\Exception\PluginException
-   */
-  protected function createBlockPluginInstance(string $plugin_id, array $configuration, array $context_values): BlockPluginInterface {
-    $block = $this->blockManager->createInstance($plugin_id, $configuration);
-    assert($block instanceof ContextAwarePluginInterface);
-    foreach ($context_values as $key => $context_value) {
-      $block->setContextValue($key, $context_value);
-    }
-    assert($block instanceof BlockPluginInterface);
-    return $block;
   }
 
   /**
@@ -231,13 +208,135 @@ final class AjaxBlockRender extends ControllerBase {
           ->getStorage($entity_type_id)
           ->load($data_value);
       }
-      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException|PluginNotFoundException  $e) {
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
-      return json_decode($data_value);
+      try {
+        return json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+      }
+      catch (\JsonException $e) {
+        return NULL;
+      }
     }
     return NULL;
+  }
+
+  /**
+   * Retrieves a Layout Builder component by its UUID.
+   *
+   * This function first checks if the given entity has a layout override. If
+   * so, it searches for the component within that override. If the entity uses
+   * the default layout or the component is not found in the override, it then
+   * searches the default layout for the entity's bundle and view mode.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   The content entity (e.g., a Node) from which to get the layout.
+   * @param string $component_uuid
+   *   The UUID (placement ID) of the component to retrieve.
+   *
+   * @return \Drupal\layout_builder\SectionComponent|null
+   *   The SectionComponent object if found, otherwise NULL.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  private function findLayoutBuilderComponent(ContentEntityInterface $entity, string $component_uuid): ?SectionComponent {
+    // First check for a per-entity override.
+    $component = $this->findComponentInEntityOverride($entity, $component_uuid);
+
+    // If not found, fall back to checking the default layout of ALL view modes.
+    return $component ?? $this->findComponentInDefaultLayouts($entity, $component_uuid);
+  }
+
+  /**
+   * Finds a component in the entity's layout override field.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   The content entity to search.
+   * @param string $component_uuid
+   *   The UUID of the component to find.
+   *
+   * @return \Drupal\layout_builder\SectionComponent|null
+   *   The component if found, otherwise NULL.
+   */
+  private function findComponentInEntityOverride(ContentEntityInterface $entity, string $component_uuid): ?SectionComponent {
+    if (!$entity->hasField('layout_builder__layout')) {
+      return NULL;
+    }
+
+    /** @var \Drupal\layout_builder\Field\LayoutSectionItemList $layout_field */
+    $layout_field = $entity->get('layout_builder__layout');
+    if ($layout_field->isEmpty()) {
+      return NULL;
+    }
+
+    // Use array_reduce to find the first component that matches the UUID.
+    $sections = iterator_to_array($layout_field);
+    return array_reduce($sections, function(?SectionComponent $carry, $section_list_item) use ($component_uuid) {
+      if ($carry !== NULL) {
+        return $carry;
+      }
+      /** @var \Drupal\layout_builder\Section $section */
+      $section = $section_list_item->section;
+      return $section->getComponent($component_uuid);
+    });
+  }
+
+  /**
+   * Finds a component in the default layouts across all view modes.
+   *
+   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   *   The content entity to search.
+   * @param string $component_uuid
+   *   The UUID of the component to find.
+   *
+   * @return \Drupal\layout_builder\SectionComponent|null
+   *   The component if found, otherwise NULL.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   */
+  private function findComponentInDefaultLayouts(ContentEntityInterface $entity, string $component_uuid): ?SectionComponent {
+    $entity_type_id = $entity->getEntityTypeId();
+    $bundle = $entity->bundle();
+
+    // Get all available view modes for this entity's bundle.
+    $view_modes = $this->entityDisplayRepository
+      ->getViewModeOptionsByBundle($entity_type_id, $bundle);
+
+    // Find the first component across all view modes.
+    return array_reduce(array_keys($view_modes), function(?SectionComponent $carry, string $view_mode_name) use ($entity_type_id, $bundle, $component_uuid) {
+      if ($carry !== NULL) {
+        return $carry;
+      }
+
+      $display_id = "{$entity_type_id}.{$bundle}.{$view_mode_name}";
+      try {
+        $display = $this->entityTypeManager()
+          ->getStorage('entity_view_display')
+          ->load($display_id);
+      }
+      catch (InvalidPluginDefinitionException|PluginNotFoundException $e) {
+        return NULL;
+      }
+
+      if (!$display instanceof LayoutBuilderEntityViewDisplay) {
+        return NULL;
+      }
+
+      // Find the first component in this view mode's sections.
+      return array_reduce(
+        $display->getSections(),
+        function(?SectionComponent $section_carry, Section $section) use ($component_uuid) {
+          if ($section_carry !== NULL) {
+            return $section_carry;
+          }
+          $section_components = $section->getComponents();
+          return $section_components[$component_uuid] ?? NULL;
+        },
+      );
+    });
   }
 
 }

@@ -43,6 +43,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
       httpMethod: 'GET',
       url: `/ab-blocks/ajax-block/${pluginId}/${placementId}/${encodedConfig}/${encodedContext}`,
       wrapper: targetHtmlId,
+      element,
     });
     await new Promise((resolve, reject) => {
       abBlockLoader
@@ -50,8 +51,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
         .then(response => {
           this.debug &&
             console.debug(
-              '[A/B Tests]',
-              'The block was rendered with the new settings.',
+              '[A/B Tests] The block was rendered with the new settings.',
               combinedSettings,
               pluginId,
               placementId,
@@ -66,7 +66,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
           reject(error);
         });
     });
-    console.debug(
+    this.debug && console.debug(
       '[A/B Blocks] Block successfully rendered using the configuration from the decider.',
       this.status,
     );

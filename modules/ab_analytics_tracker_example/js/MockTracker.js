@@ -21,12 +21,12 @@ class MockTracker extends BaseTracker {
   /**
    * @inheritDoc
    */
-  track(decision, element) {
+  track(trackingInfo, element) {
     this.getDebug() &&
       console.debug(
         '[A/B Tests]',
         'MockTracker: starting tracking:',
-        decision,
+        trackingInfo,
         this.apiKey,
         this.trackingDomain,
       );
@@ -36,7 +36,7 @@ class MockTracker extends BaseTracker {
         console.log(
           '[A/B Tests]',
           'MockTracker: Event tracked successfully:',
-          decision,
+          trackingInfo,
           this.apiKey,
           this.trackingDomain,
         );
@@ -48,7 +48,7 @@ class MockTracker extends BaseTracker {
         console.log(
           'A/B Tests',
           'MockTracker: Event clicked:',
-          element,
+          elementInfo,
           decision,
           this.apiKey,
           this.trackingDomain,

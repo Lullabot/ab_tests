@@ -193,6 +193,7 @@ class AbTestsHooks {
 
       $build['#attached'] = NestedArray::mergeDeep($build['#attached'] ?? [], $metadata->getAttachments());
       $build['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+      $build['#attributes']['data-ab-tests-tracking-info'] = $display->getMode();
       return;
     }
     if (!$this->isFullPageEntity($entity)) {
