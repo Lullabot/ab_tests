@@ -14,6 +14,7 @@ use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
@@ -90,27 +91,35 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     }
     // Do not affect the Ajax re-render of the block.
     if ($this->routeMatch->getRouteName() === 'ab_blocks.block.ajax_render') {
-      // Attach the library from the analytics tracker.
-      $analytics_tracker_id = $settings['analytics']['id'] ?? 'null';
-      try {
-        $analytics_tracker = $this->analyticsManager->createInstance(
-          $analytics_tracker_id,
-          $settings['analytics']['settings'] ?? [],
-        );
-        assert($analytics_tracker instanceof AbAnalyticsInterface);
-        $tracker_build = $analytics_tracker->toRenderable();
-      }
-      catch (PluginException $e) {
-        $tracker_build = [
-          '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
-        ];
-      }
-      $build[0]['content']['ab_tests_tracker'] = $tracker_build;
-      $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $tracker_build['#attached'] ?? []);
-      $build[0]['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
-      $build[0]['content']['ab_tests_tracker'] = $tracker_build;
-      // phpcs:ignore
-      unset($build[0]['content']['ab_tests_tracker']['#attached']);
+      // Attach the library from the analytics trackers.
+      $build = $event->getBuild();
+
+      // Attach libraries from all analytics trackers.
+      $metadata = array_reduce(
+        $settings['analytics'] ?? [],
+        function (BubbleableMetadata $metadata, array $tracker_config) {
+          $tracker_id = $tracker_config['id'] ?? NULL;
+          if (!$tracker_id) {
+            return $metadata;
+          }
+          $tracker_settings = $tracker_config['settings'] ?? [];
+          try {
+            $analytics_tracker = $this->analyticsManager->createInstance(
+              $tracker_id,
+              $tracker_settings,
+            );
+            assert($analytics_tracker instanceof AbAnalyticsInterface);
+            $metadata->addCacheableDependency(BubbleableMetadata::createFromRenderArray($analytics_tracker->toRenderable()));
+          }
+          catch (PluginException $e) {
+          }
+          return $metadata;
+        },
+        new BubbleableMetadata(),
+      );
+      $build['content']['#attached'] = NestedArray::mergeDeep($build['content']['#attached'] ?? [], $metadata->getAttachments());
+      $build['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+
       $event->setBuild($build);
       return;
     }

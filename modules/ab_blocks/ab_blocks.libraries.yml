@@ -1,6 +1,7 @@
 ab_blocks:
   js:
     js/BlockDecisionHandler.js: { }
+    js/BlockTrackerBase.js: { }
   dependencies:
     - core/drupal
     - core/drupalSettings
