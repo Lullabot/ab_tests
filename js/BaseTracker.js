@@ -30,7 +30,7 @@ class BaseTracker extends BaseAction {
    *
    * @protected
    */
-  track(trackingInfo, element) {
+  async track(trackingInfo, element) {
     throw new Error('Tracker must implement track() method.');
   }
 }
