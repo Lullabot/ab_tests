@@ -66,10 +66,11 @@ class BlockDecisionHandler extends BaseDecisionHandler {
           reject(error);
         });
     });
-    this.debug && console.debug(
-      '[A/B Blocks] Block successfully rendered using the configuration from the decider.',
-      this.status,
-    );
+    this.debug &&
+      console.debug(
+        '[A/B Blocks] Block successfully rendered using the configuration from the decider.',
+        this.status,
+      );
   }
 
   /**

@@ -95,7 +95,7 @@ class AbTestsManager {
       decision = await decider.decide(element);
       status = 'success';
       debug &&
-      console.debug('[A/B Tests]', 'A decision was reached.', decision);
+        console.debug('[A/B Tests]', 'A decision was reached.', decision);
       await decisionHandler.handleDecision(element, decision);
     } catch (error) {
       status = 'error';

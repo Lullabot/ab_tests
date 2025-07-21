@@ -1,5 +1,4 @@
 class BlockTrackerBase extends BaseTracker {
-
   /**
    * Gets the block metadata in the global settings from the placement ID.
    *
@@ -12,7 +11,8 @@ class BlockTrackerBase extends BaseTracker {
    * @protected
    */
   _getBlockMetadata(placementId) {
-    return drupalSettings?.ab_tests?.features?.ab_blocks?.blocks?.[placementId] || {};
+    return (
+      drupalSettings?.ab_tests?.features?.ab_blocks?.blocks?.[placementId] || {}
+    );
   }
-
 }
