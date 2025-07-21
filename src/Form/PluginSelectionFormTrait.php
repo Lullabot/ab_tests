@@ -110,7 +110,10 @@ trait PluginSelectionFormTrait {
 
     $settings = $multiple_cardinality
       ? $settings
-      : array_combine($selected_plugin_ids, [$settings]);
+      : array_map(
+        static fn (string $selected_plugin_id) => $settings,
+        $selected_plugin_ids,
+      );
     // List all plugins with settings for selected ones.
     $plugin_settings = array_reduce(
       $selected_plugin_ids,
