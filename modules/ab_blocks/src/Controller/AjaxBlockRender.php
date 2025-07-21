@@ -10,7 +10,6 @@ use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
@@ -39,8 +38,6 @@ final class AjaxBlockRender extends ControllerBase {
    *   The block manager.
    * @param \Drupal\Core\TypedData\TypedDataManagerInterface $typedDataManager
    *   The typed data manager.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The config factory.
    * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
    *   The entity display repository.
    */
@@ -131,7 +128,7 @@ final class AjaxBlockRender extends ControllerBase {
 
     $context = new RenderContext();
     try {
-      $html = $this->renderer->executeInRenderContext($context, function() use ($build) {
+      $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
         return $this->renderer->render($build);
       });
     }
@@ -208,7 +205,7 @@ final class AjaxBlockRender extends ControllerBase {
           ->getStorage($entity_type_id)
           ->load($data_value);
       }
-      catch (InvalidPluginDefinitionException|PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
@@ -273,7 +270,7 @@ final class AjaxBlockRender extends ControllerBase {
 
     // Use array_reduce to find the first component that matches the UUID.
     $sections = iterator_to_array($layout_field);
-    return array_reduce($sections, function(?SectionComponent $carry, $section_list_item) use ($component_uuid) {
+    return array_reduce($sections, function (?SectionComponent $carry, $section_list_item) use ($component_uuid) {
       if ($carry !== NULL) {
         return $carry;
       }
@@ -306,7 +303,7 @@ final class AjaxBlockRender extends ControllerBase {
       ->getViewModeOptionsByBundle($entity_type_id, $bundle);
 
     // Find the first component across all view modes.
-    return array_reduce(array_keys($view_modes), function(?SectionComponent $carry, string $view_mode_name) use ($entity_type_id, $bundle, $component_uuid) {
+    return array_reduce(array_keys($view_modes), function (?SectionComponent $carry, string $view_mode_name) use ($entity_type_id, $bundle, $component_uuid) {
       if ($carry !== NULL) {
         return $carry;
       }
@@ -317,7 +314,7 @@ final class AjaxBlockRender extends ControllerBase {
           ->getStorage('entity_view_display')
           ->load($display_id);
       }
-      catch (InvalidPluginDefinitionException|PluginNotFoundException $e) {
+      catch (InvalidPluginDefinitionException | PluginNotFoundException $e) {
         return NULL;
       }
 
@@ -328,7 +325,7 @@ final class AjaxBlockRender extends ControllerBase {
       // Find the first component in this view mode's sections.
       return array_reduce(
         $display->getSections(),
-        function(?SectionComponent $section_carry, Section $section) use ($component_uuid) {
+        function (?SectionComponent $section_carry, Section $section) use ($component_uuid) {
           if ($section_carry !== NULL) {
             return $section_carry;
           }
