@@ -108,16 +108,16 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
     // Get all block plugin definitions and filter to block plugins only.
     $block_definitions = $this->blockManager->getDefinitions();
-    $block_options = [];
-
-    foreach ($block_definitions as $plugin_id => $definition) {
-      // Skip the proxy block itself to avoid recursion.
-      if ($plugin_id === $this->getPluginId()) {
-        continue;
-      }
-      
-      $block_options[$plugin_id] = $definition['admin_label'] ?? $plugin_id;
-    }
+    
+    // Use functional approach: filter out proxy block and map to options.
+    $block_options = array_map(
+      static fn($definition) => $definition['admin_label'] ?? $definition['id'],
+      array_filter(
+        $block_definitions,
+        fn($definition, $plugin_id) => $plugin_id !== $this->getPluginId(),
+        ARRAY_FILTER_USE_BOTH
+      )
+    );
 
     // Sort options alphabetically.
     asort($block_options);
@@ -259,34 +259,50 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   protected function buildContextMappingForm(ContextAwarePluginInterface $target_block, array $config): array {
     $context_definitions = $target_block->getContextDefinitions();
+    
+    // Guard clause: return early if no context definitions.
     if (empty($context_definitions)) {
       return [];
     }
 
+    // Get available contexts from the proxy block for dropdown options.
+    $available_contexts = $this->getContexts();
+    $context_options = ['' => $this->t('- Select context -')] + array_map(
+      static fn($context) => $context->getContextDefinition()->getLabel() ?: $context->getContextDefinition()->getDataType(),
+      $available_contexts
+    );
+
     $form = [
       '#type' => 'details',
       '#title' => $this->t('Context Mapping'),
-      '#description' => $this->t('Map contexts required by this block.'),
+      '#description' => $this->t('Map contexts required by this block to available contexts.'),
       '#open' => TRUE,
     ];
 
     $current_mapping = $config['context_mapping'] ?? [];
 
-    foreach ($context_definitions as $context_name => $definition) {
-      $form[$context_name] = [
-        '#type' => 'textfield',
-        '#title' => $definition->getLabel() ?: $context_name,
-        '#description' => $definition->getDescription(),
-        '#default_value' => $current_mapping[$context_name] ?? $context_name,
-        '#placeholder' => $context_name,
-      ];
+    // Use functional approach to build context mapping fields.
+    $context_fields = array_map(
+      function($definition, $context_name) use ($context_options, $current_mapping) {
+        $field = [
+          '#type' => 'select',
+          '#title' => $definition->getLabel() ?: $context_name,
+          '#description' => $definition->getDescription(),
+          '#options' => $context_options,
+          '#default_value' => $current_mapping[$context_name] ?? '',
+        ];
 
-      if ($definition->isRequired()) {
-        $form[$context_name]['#required'] = TRUE;
-      }
-    }
+        if ($definition->isRequired()) {
+          $field['#required'] = TRUE;
+        }
 
-    return $form;
+        return $field;
+      },
+      $context_definitions,
+      array_keys($context_definitions)
+    );
+
+    return $form + $context_fields;
   }
 
   /**
@@ -317,13 +333,22 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
           $context_mapping = $form_state->getValue('context_mapping') ?? [];
           $context_definitions = $target_block->getContextDefinitions();
 
-          foreach ($context_definitions as $context_name => $definition) {
-            if ($definition->isRequired() && empty($context_mapping[$context_name])) {
+          // Use functional approach to validate required contexts.
+          $required_contexts = array_filter($context_definitions, static fn($definition) => $definition->isRequired());
+          $missing_contexts = array_filter(
+            $required_contexts,
+            static fn($definition, $context_name) => empty($context_mapping[$context_name]),
+            ARRAY_FILTER_USE_BOTH
+          );
+
+          array_walk(
+            $missing_contexts,
+            function($definition, $context_name) use ($form_state) {
               $form_state->setErrorByName("context_mapping][$context_name]", $this->t('Context mapping for @context is required.', [
                 '@context' => $definition->getLabel() ?: $context_name,
               ]));
             }
-          }
+          );
         }
       }
       catch (PluginException $e) {
@@ -445,6 +470,7 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $plugin_id = $config['target_block_plugin'] ?? '';
     $block_config = $config['target_block_config'] ?? [];
 
+    // Guard clause: return early if no plugin ID.
     if (empty($plugin_id)) {
       return NULL;
     }
@@ -478,19 +504,26 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     try {
       $proxy_contexts = $this->getContexts();
       $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
-      
-      // Get the target block's context definitions.
       $target_context_definitions = $target_block->getContextDefinitions();
       
-      foreach ($target_context_definitions as $target_context_name => $definition) {
-        // Check if there's a mapping for this context.
-        $source_context_name = $context_mapping[$target_context_name] ?? $target_context_name;
-        
-        // If we have a matching context, pass it to the target block.
-        if (isset($proxy_contexts[$source_context_name])) {
-          $target_block->setContext($target_context_name, $proxy_contexts[$source_context_name]);
-        }
-      }
+      // Use functional approach to build context mappings.
+      $mapped_contexts = array_filter(
+        array_map(
+          function($target_context_name) use ($context_mapping, $proxy_contexts) {
+            $source_context_name = $context_mapping[$target_context_name] ?? $target_context_name;
+            return isset($proxy_contexts[$source_context_name]) 
+              ? [$target_context_name, $proxy_contexts[$source_context_name]]
+              : NULL;
+          },
+          array_keys($target_context_definitions)
+        )
+      );
+      
+      // Apply contexts to target block.
+      array_walk(
+        $mapped_contexts,
+        static fn($context_pair) => $target_block->setContext($context_pair[0], $context_pair[1])
+      );
     }
     catch (ContextException $e) {
       $this->logger->warning('Failed to pass contexts to target block: @message', [
@@ -541,28 +574,25 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   protected function getTargetBlockCacheMetadata(string $type, $parent_value) {
     $config = $this->getConfiguration();
+    
+    // Guard clause: return early if no target block plugin.
     if (empty($config['target_block_plugin'])) {
       return $parent_value;
     }
 
     $target_block = $this->getTargetBlock();
+    
+    // Guard clause: return early if target block creation failed.
     if (!$target_block) {
       return $parent_value;
     }
 
-    switch ($type) {
-      case 'contexts':
-        return Cache::mergeContexts($parent_value, $target_block->getCacheContexts());
-
-      case 'tags':
-        return Cache::mergeTags($parent_value, $target_block->getCacheTags());
-
-      case 'max-age':
-        return Cache::mergeMaxAges($parent_value, $target_block->getCacheMaxAge());
-
-      default:
-        return $parent_value;
-    }
+    return match ($type) {
+      'contexts' => Cache::mergeContexts($parent_value, $target_block->getCacheContexts()),
+      'tags' => Cache::mergeTags($parent_value, $target_block->getCacheTags()),
+      'max-age' => Cache::mergeMaxAges($parent_value, $target_block->getCacheMaxAge()),
+      default => $parent_value,
+    };
   }
 
   /**
