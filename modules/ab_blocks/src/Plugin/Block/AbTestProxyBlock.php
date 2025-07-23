@@ -32,7 +32,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   category = @Translation("A/B Testing")
  * )
  */
-class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterface {
+class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterface, ContextAwarePluginInterface {
 
   /**
    * The block manager service.
@@ -95,7 +95,6 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     return [
       'target_block_plugin' => '',
       'target_block_config' => [],
-      'render_mode' => 'block',
       'context_mapping' => [],
     ] + parent::defaultConfiguration();
   }
@@ -151,16 +150,6 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $form['target_block_config_wrapper'] += $this->buildTargetBlockConfigurationForm($selected_block_plugin, $form_state);
     }
 
-    $form['render_mode'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Render Mode'),
-      '#description' => $this->t('How to render the block.'),
-      '#options' => [
-        'block' => $this->t('Block'),
-        'empty' => $this->t('Empty (hidden)'),
-      ],
-      '#default_value' => $config['render_mode'] ?? 'block',
-    ];
 
     return $form;
   }
@@ -194,10 +183,19 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   protected function buildTargetBlockConfigurationForm(string $plugin_id, FormStateInterface $form_state): array {
     $config = $this->getConfiguration();
     $block_config = $config['target_block_config'] ?? [];
+    $form_elements = [];
 
     try {
       // Create the target block instance.
       $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
+
+      // Build context mapping form if the block requires contexts.
+      if ($target_block instanceof ContextAwarePluginInterface) {
+        $context_form = $this->buildContextMappingForm($target_block, $config);
+        if (!empty($context_form)) {
+          $form_elements['context_mapping'] = $context_form;
+        }
+      }
 
       // If the block implements PluginFormInterface, build its configuration form.
       if ($target_block instanceof PluginFormInterface) {
@@ -207,23 +205,25 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
         $config_form = $target_block->buildConfigurationForm($form, $subform_state);
 
-        return [
+        $form_elements['target_block_config'] = [
           '#type' => 'details',
           '#title' => $this->t('Block Configuration'),
           '#open' => TRUE,
-          'target_block_config' => $config_form,
+        ] + $config_form;
+      }
+      elseif (empty($form_elements)) {
+        // If no configuration form and no contexts, show a message.
+        $form_elements['no_config'] = [
+          '#type' => 'details',
+          '#title' => $this->t('Block Configuration'),
+          '#open' => TRUE,
+          'message' => [
+            '#markup' => $this->t('This block does not have any configuration options.'),
+          ],
         ];
       }
 
-      // If the block doesn't have a configuration form, show a message.
-      return [
-        '#type' => 'details',
-        '#title' => $this->t('Block Configuration'),
-        '#open' => TRUE,
-        'no_config' => [
-          '#markup' => $this->t('This block does not have any configuration options.'),
-        ],
-      ];
+      return $form_elements;
     }
     catch (PluginException $e) {
       $this->logger->warning('Failed to create target block @plugin for configuration form: @message', [
@@ -232,16 +232,61 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       ]);
 
       return [
-        '#type' => 'details',
-        '#title' => $this->t('Block Configuration'),
-        '#open' => TRUE,
         'error' => [
-          '#markup' => $this->t('Error loading block configuration: @message', [
-            '@message' => $e->getMessage(),
-          ]),
+          '#type' => 'details',
+          '#title' => $this->t('Block Configuration'),
+          '#open' => TRUE,
+          'message' => [
+            '#markup' => $this->t('Error loading block configuration: @message', [
+              '@message' => $e->getMessage(),
+            ]),
+          ],
         ],
       ];
     }
+  }
+
+  /**
+   * Builds the context mapping form for a context-aware target block.
+   *
+   * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
+   *   The target block plugin.
+   * @param array $config
+   *   The current proxy block configuration.
+   *
+   * @return array
+   *   The context mapping form elements.
+   */
+  protected function buildContextMappingForm(ContextAwarePluginInterface $target_block, array $config): array {
+    $context_definitions = $target_block->getContextDefinitions();
+    if (empty($context_definitions)) {
+      return [];
+    }
+
+    $form = [
+      '#type' => 'details',
+      '#title' => $this->t('Context Mapping'),
+      '#description' => $this->t('Map contexts required by this block.'),
+      '#open' => TRUE,
+    ];
+
+    $current_mapping = $config['context_mapping'] ?? [];
+
+    foreach ($context_definitions as $context_name => $definition) {
+      $form[$context_name] = [
+        '#type' => 'textfield',
+        '#title' => $definition->getLabel() ?: $context_name,
+        '#description' => $definition->getDescription(),
+        '#default_value' => $current_mapping[$context_name] ?? $context_name,
+        '#placeholder' => $context_name,
+      ];
+
+      if ($definition->isRequired()) {
+        $form[$context_name]['#required'] = TRUE;
+      }
+    }
+
+    return $form;
   }
 
   /**
@@ -266,6 +311,20 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
           $target_block->validateConfigurationForm($form_element, $subform_state);
         }
+
+        // Validate context mapping if the block requires contexts.
+        if ($target_block instanceof ContextAwarePluginInterface) {
+          $context_mapping = $form_state->getValue('context_mapping') ?? [];
+          $context_definitions = $target_block->getContextDefinitions();
+
+          foreach ($context_definitions as $context_name => $definition) {
+            if ($definition->isRequired() && empty($context_mapping[$context_name])) {
+              $form_state->setErrorByName("context_mapping][$context_name]", $this->t('Context mapping for @context is required.', [
+                '@context' => $definition->getLabel() ?: $context_name,
+              ]));
+            }
+          }
+        }
       }
       catch (PluginException $e) {
         $form_state->setErrorByName('target_block_plugin', $this->t('Invalid target block plugin: @message', [
@@ -282,7 +341,6 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     parent::blockSubmit($form, $form_state);
 
     $this->configuration['target_block_plugin'] = $form_state->getValue('target_block_plugin');
-    $this->configuration['render_mode'] = $form_state->getValue('render_mode');
 
     // Handle target block configuration.
     $target_block_plugin = $form_state->getValue('target_block_plugin');
@@ -304,6 +362,15 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
         else {
           $this->configuration['target_block_config'] = $block_config;
         }
+
+        // Handle context mapping.
+        if ($target_block instanceof ContextAwarePluginInterface) {
+          $context_mapping = $form_state->getValue('context_mapping') ?? [];
+          $this->configuration['context_mapping'] = array_filter($context_mapping);
+        }
+        else {
+          $this->configuration['context_mapping'] = [];
+        }
       }
       catch (PluginException $e) {
         $this->logger->warning('Failed to process target block configuration for @plugin: @message', [
@@ -311,10 +378,12 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
           '@message' => $e->getMessage(),
         ]);
         $this->configuration['target_block_config'] = [];
+        $this->configuration['context_mapping'] = [];
       }
     }
     else {
       $this->configuration['target_block_config'] = [];
+      $this->configuration['context_mapping'] = [];
     }
   }
 
@@ -322,17 +391,10 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function build(): array {
-    $config = $this->getConfiguration();
-
-    // Handle empty render mode.
-    if ($config['render_mode'] === 'empty') {
-      return [];
-    }
-
     // Create and render target block.
     $target_block = $this->getTargetBlock();
     if (!$target_block) {
-      return $this->buildErrorState();
+      return [];
     }
 
     // Check target block access.
@@ -413,10 +475,6 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    *   The target block plugin.
    */
   protected function passContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
-    if (!$this instanceof ContextAwarePluginInterface) {
-      return;
-    }
-
     try {
       $proxy_contexts = $this->getContexts();
       $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
@@ -469,22 +527,6 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     $cache_metadata->applyTo($build);
   }
 
-  /**
-   * Builds an error state render array.
-   *
-   * @return array
-   *   The error state render array.
-   */
-  protected function buildErrorState(): array {
-    return [
-      '#markup' => $this->t('Block configuration error: Target block could not be loaded.'),
-      '#cache' => [
-        'contexts' => $this->getCacheContexts(),
-        'tags' => $this->getCacheTags(),
-        'max-age' => $this->getCacheMaxAge(),
-      ],
-    ];
-  }
 
   /**
    * Helper method to get target block cache metadata.
