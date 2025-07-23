@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace Drupal\ab_blocks\Plugin\Block;
 
+use Drupal\Core\Access\AccessibleInterface;
 use Drupal\Core\Block\BlockBase;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Cache\Cache;
+use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\ContextAwarePluginInterface;
+use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -31,6 +37,16 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   protected BlockManagerInterface $blockManager;
 
   /**
+   * The logger service.
+   */
+  protected LoggerInterface $logger;
+
+  /**
+   * Cached target block instance.
+   */
+  protected ?BlockPluginInterface $targetBlockInstance = NULL;
+
+  /**
    * Constructs a new AbTestProxyBlock.
    *
    * @param array $configuration
@@ -41,15 +57,19 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    *   The plugin definition.
    * @param \Drupal\Core\Block\BlockManagerInterface $block_manager
    *   The block manager service.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger service.
    */
   public function __construct(
     array $configuration,
     string $plugin_id,
     mixed $plugin_definition,
     BlockManagerInterface $block_manager,
+    LoggerInterface $logger,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->blockManager = $block_manager;
+    $this->logger = $logger;
   }
 
   /**
@@ -60,7 +80,8 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('plugin.manager.block')
+      $container->get('plugin.manager.block'),
+      $container->get('logger.factory')->get('ab_blocks')
     );
   }
 
@@ -72,6 +93,7 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       'target_block_plugin' => '',
       'target_block_config' => [],
       'render_mode' => 'block',
+      'context_mapping' => [],
     ] + parent::defaultConfiguration();
   }
 
@@ -80,8 +102,44 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockForm($form, FormStateInterface $form_state) {
     $form = parent::blockForm($form, $form_state);
+    $config = $this->getConfiguration();
 
-    // Form implementation will be added in Issue B.
+    // Get all block plugin definitions and filter to block plugins only.
+    $block_definitions = $this->blockManager->getDefinitions();
+    $block_options = [];
+
+    foreach ($block_definitions as $plugin_id => $definition) {
+      // Skip the proxy block itself to avoid recursion.
+      if ($plugin_id === $this->getPluginId()) {
+        continue;
+      }
+      
+      $block_options[$plugin_id] = $definition['admin_label'] ?? $plugin_id;
+    }
+
+    // Sort options alphabetically.
+    asort($block_options);
+
+    $form['target_block_plugin'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Target Block'),
+      '#description' => $this->t('Select the block plugin to proxy.'),
+      '#options' => ['' => $this->t('- Select a block -')] + $block_options,
+      '#default_value' => $config['target_block_plugin'] ?? '',
+      '#required' => TRUE,
+    ];
+
+    $form['render_mode'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Render Mode'),
+      '#description' => $this->t('How to render the block.'),
+      '#options' => [
+        'block' => $this->t('Block'),
+        'empty' => $this->t('Empty (hidden)'),
+      ],
+      '#default_value' => $config['render_mode'] ?? 'block',
+    ];
+
     return $form;
   }
 
@@ -91,8 +149,8 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   public function blockSubmit($form, FormStateInterface $form_state) {
     parent::blockSubmit($form, $form_state);
 
-    // Configuration save implementation will be added in Issue B.
-    $form['foo'] = ['#markup' => 'Bar'];
+    $this->configuration['target_block_plugin'] = $form_state->getValue('target_block_plugin');
+    $this->configuration['render_mode'] = $form_state->getValue('render_mode');
   }
 
   /**
@@ -103,18 +161,11 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
     // Handle empty render mode.
     if ($config['render_mode'] === 'empty') {
-      return [
-        '#markup' => '',
-        '#cache' => [
-          'contexts' => $this->getCacheContexts(),
-          'tags' => $this->getCacheTags(),
-          'max-age' => $this->getCacheMaxAge(),
-        ],
-      ];
+      return [];
     }
 
     // Create and render target block.
-    $target_block = $this->createTargetBlock();
+    $target_block = $this->getTargetBlock();
     if (!$target_block) {
       return $this->buildErrorState();
     }
@@ -144,6 +195,19 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Gets or creates the target block plugin instance.
+   *
+   * @return \Drupal\Core\Block\BlockPluginInterface|null
+   *   The target block plugin or NULL if creation failed.
+   */
+  protected function getTargetBlock(): ?BlockPluginInterface {
+    if ($this->targetBlockInstance === NULL) {
+      $this->targetBlockInstance = $this->createTargetBlock();
+    }
+    return $this->targetBlockInstance;
+  }
+
+  /**
    * Creates the target block plugin instance.
    *
    * @return \Drupal\Core\Block\BlockPluginInterface|null
@@ -159,10 +223,17 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     }
 
     try {
-      return $this->blockManager->createInstance($plugin_id, $block_config);
+      $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
+      
+      // Pass contexts to the target block if it's context-aware.
+      if ($target_block instanceof ContextAwarePluginInterface) {
+        $this->passContextsToTargetBlock($target_block);
+      }
+      
+      return $target_block;
     }
     catch (PluginException $e) {
-      \Drupal::logger('ab_blocks')->warning('Failed to create target block @plugin: @message', [
+      $this->logger->warning('Failed to create target block @plugin: @message', [
         '@plugin' => $plugin_id,
         '@message' => $e->getMessage(),
       ]);
@@ -171,14 +242,49 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Passes contexts from the proxy block to the target block.
+   *
+   * @param \Drupal\Core\Plugin\ContextAwarePluginInterface $target_block
+   *   The target block plugin.
+   */
+  protected function passContextsToTargetBlock(ContextAwarePluginInterface $target_block): void {
+    if (!$this instanceof ContextAwarePluginInterface) {
+      return;
+    }
+
+    try {
+      $proxy_contexts = $this->getContexts();
+      $context_mapping = $this->getConfiguration()['context_mapping'] ?? [];
+      
+      // Get the target block's context definitions.
+      $target_context_definitions = $target_block->getContextDefinitions();
+      
+      foreach ($target_context_definitions as $target_context_name => $definition) {
+        // Check if there's a mapping for this context.
+        $source_context_name = $context_mapping[$target_context_name] ?? $target_context_name;
+        
+        // If we have a matching context, pass it to the target block.
+        if (isset($proxy_contexts[$source_context_name])) {
+          $target_block->setContext($target_context_name, $proxy_contexts[$source_context_name]);
+        }
+      }
+    }
+    catch (ContextException $e) {
+      $this->logger->warning('Failed to pass contexts to target block: @message', [
+        '@message' => $e->getMessage(),
+      ]);
+    }
+  }
+
+  /**
    * Bubbles cache metadata from the target block to the render array.
    *
    * @param array $build
    *   The render array to apply metadata to.
-   * @param \Drupal\Core\Block\BlockPluginInterface $target_block
+   * @param \Drupal\Core\Cache\CacheableDependencyInterface&\Drupal\Core\Access\AccessibleInterface $target_block
    *   The target block plugin.
    */
-  protected function bubbleTargetBlockCacheMetadata(array &$build, BlockPluginInterface $target_block): void {
+  protected function bubbleTargetBlockCacheMetadata(array &$build, CacheableDependencyInterface&AccessibleInterface $target_block): void {
     $cache_metadata = CacheableMetadata::createFromRenderArray($build);
 
     // Add target block's cache contexts, tags, and max-age.
@@ -216,37 +322,55 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Helper method to get target block cache metadata.
+   *
+   * @param string $type
+   *   The cache metadata type ('contexts', 'tags', or 'max-age').
+   * @param mixed $parent_value
+   *   The parent cache metadata value.
+   *
+   * @return mixed
+   *   The merged cache metadata.
+   */
+  protected function getTargetBlockCacheMetadata(string $type, $parent_value) {
+    $config = $this->getConfiguration();
+    if (empty($config['target_block_plugin'])) {
+      return $parent_value;
+    }
+
+    $target_block = $this->getTargetBlock();
+    if (!$target_block) {
+      return $parent_value;
+    }
+
+    switch ($type) {
+      case 'contexts':
+        return Cache::mergeContexts($parent_value, $target_block->getCacheContexts());
+
+      case 'tags':
+        return Cache::mergeTags($parent_value, $target_block->getCacheTags());
+
+      case 'max-age':
+        return Cache::mergeMaxAges($parent_value, $target_block->getCacheMaxAge());
+
+      default:
+        return $parent_value;
+    }
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function getCacheContexts(): array {
-    $cache_contexts = parent::getCacheContexts();
-
-    // Add contexts based on configuration.
-    $config = $this->getConfiguration();
-    if (!empty($config['target_block_plugin'])) {
-      $target_block = $this->createTargetBlock();
-      if ($target_block) {
-        $cache_contexts = Cache::mergeContexts($cache_contexts, $target_block->getCacheContexts());
-      }
-    }
-
-    return $cache_contexts;
+    return $this->getTargetBlockCacheMetadata('contexts', parent::getCacheContexts());
   }
 
   /**
    * {@inheritdoc}
    */
   public function getCacheTags(): array {
-    $cache_tags = parent::getCacheTags();
-
-    $config = $this->getConfiguration();
-    if (!empty($config['target_block_plugin'])) {
-      $target_block = $this->createTargetBlock();
-      if ($target_block) {
-        $cache_tags = Cache::mergeTags($cache_tags, $target_block->getCacheTags());
-      }
-    }
-
+    $cache_tags = $this->getTargetBlockCacheMetadata('tags', parent::getCacheTags());
+    
     // Add config-based cache tag.
     $cache_tags[] = 'ab_test_proxy_block:' . $this->getPluginId();
 
@@ -257,17 +381,7 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    * {@inheritdoc}
    */
   public function getCacheMaxAge(): int {
-    $max_age = parent::getCacheMaxAge();
-
-    $config = $this->getConfiguration();
-    if (!empty($config['target_block_plugin'])) {
-      $target_block = $this->createTargetBlock();
-      if ($target_block) {
-        $max_age = Cache::mergeMaxAges($max_age, $target_block->getCacheMaxAge());
-      }
-    }
-
-    return $max_age;
+    return $this->getTargetBlockCacheMetadata('max-age', parent::getCacheMaxAge());
   }
 
 }
