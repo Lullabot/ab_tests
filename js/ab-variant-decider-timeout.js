@@ -4,47 +4,47 @@
    */
   Drupal.behaviors.abVariantDeciderTimeout = {
     attach(context, settings) {
-      const abTestsSettings = settings?.ab_tests || {};
-      const { deciderSettings, debug = false } = abTestsSettings;
-
-      if (!deciderSettings?.experimentsSelector) {
-        return;
-      }
-
-      const elements = once(
-        'ab-variant-decider-timeout',
-        deciderSettings.experimentsSelector,
-        context,
-      );
-
+      const debug = settings?.ab_tests?.debug || false;
       const abTestsManager = new AbTestsManager();
-      elements.forEach(element => {
-        if (!deciderSettings) {
-          return;
-        }
+      Object.values(settings?.ab_variant_decider_launchdarkly || {}).forEach(
+        abTestsSettings => {
+          const { deciderSettings } = abTestsSettings;
 
-        // Extract enabled variants from settings.
-        const availableVariants = deciderSettings?.availableVariants || [];
+          if (!deciderSettings?.experimentsSelector) {
+            return;
+          }
 
-        if (!availableVariants.length) {
-          return;
-        }
+          const elements = once(
+            'ab-variant-decider-timeout',
+            deciderSettings.experimentsSelector,
+            context,
+          );
 
-        const timeoutConfig = deciderSettings?.timeout || {};
-        const config = {
-          minTimeout: parseInt(timeoutConfig?.min, 10) || 1000,
-          maxTimeout: parseInt(timeoutConfig?.max, 10) || 5000,
-        };
+          elements.forEach(element => {
+            // Extract enabled variants from settings.
+            const availableVariants = deciderSettings?.availableVariants || [];
 
-        const decider = new TimeoutDecider(availableVariants, config);
+            if (!availableVariants.length) {
+              return;
+            }
 
-        abTestsManager.registerDecider(
-          element,
-          decider,
-          abTestsSettings,
-          debug,
-        );
-      });
+            const timeoutConfig = deciderSettings?.timeout || {};
+            const config = {
+              minTimeout: parseInt(timeoutConfig?.min, 10) || 1000,
+              maxTimeout: parseInt(timeoutConfig?.max, 10) || 5000,
+            };
+
+            const decider = new TimeoutDecider(availableVariants, config);
+
+            abTestsManager.registerDecider(
+              element,
+              decider,
+              abTestsSettings,
+              debug,
+            );
+          });
+        },
+      );
     },
   };
 })(Drupal, once);

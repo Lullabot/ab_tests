@@ -13,10 +13,15 @@ use Drupal\Core\Cache\CacheableAjaxResponse;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\Context\ContextDefinition;
+use Drupal\Core\Plugin\Context\EntityContext;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\TypedData\Plugin\DataType\Language;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
@@ -95,16 +100,13 @@ final class AjaxBlockRender extends ControllerBase {
       return $response;
     }
     $context_values = $this->deserializeContextValues($serialized_context_values);
-    $entities = array_filter(
-      $context_values,
-      static fn($context) => $context instanceof ContentEntityInterface,
-    );
 
-    $section_component = array_reduce(
-      $entities,
-      fn (?SectionComponent $component, ContentEntityInterface $entity): ?SectionComponent =>
-        $component ?: $this->findLayoutBuilderComponent($entity, $placement_id),
-    );
+    $root_entity_context = $context_values['layout_builder.entity'] ?? $context_values['entity'] ?? $context_values['node'] ?? NULL;
+    $root_entity = $root_entity_context->getContextValue();
+    if (!$root_entity instanceof ContentEntityInterface) {
+      return $response;
+    }
+    $section_component = $this->findLayoutBuilderComponent($root_entity, $placement_id);
 
     // If no section component found, return empty response.
     if (!$section_component) {
@@ -117,9 +119,6 @@ final class AjaxBlockRender extends ControllerBase {
         ->get('debug_mode');
       $section_component->setConfiguration($configuration);
       $build = $section_component->toRenderArray($context_values);
-      // This is used in the analytics plugins (js) to detect the block to
-      // track.
-      $build['#attributes']['data-ab-tests-tracking-info'] = $placement_id;
     }
     catch (\Exception $e) {
       // If configuration or build creation fails, return an empty  response.
@@ -128,22 +127,19 @@ final class AjaxBlockRender extends ControllerBase {
 
     $context = new RenderContext();
     try {
-      $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
-        return $this->renderer->render($build);
+      $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
+        return $this->renderer->render($build, TRUE);
       });
     }
     catch (\Exception $e) {
-      // If rendering fails, return empty response.
       return $response;
     }
-
-    $metadata_from_render = $context->pop();
-    if ($metadata_from_render instanceof BubbleableMetadata) {
-      $attachments_from_render = $metadata_from_render->getAttachments();
-      // Add caching information for the render metadata.
-      $response->addCacheableDependency($metadata_from_render);
-      // Add the attachments from the render process.
-      $response->addAttachments($attachments_from_render);
+    // Add the assets, libraries, settings, and cache information bubbled up
+    // during rendering.
+    while (!$context->isEmpty()) {
+      $metadata = $context->pop();
+      $response->addAttachments($metadata->getAttachments());
+      $response->addCacheableDependency($metadata);
     }
 
     $dependency = new BubbleableMetadata();
@@ -157,7 +153,7 @@ final class AjaxBlockRender extends ControllerBase {
 
     // The selector for the insert command is NULL as the new content will
     // replace the element making the Ajax call.
-    $response->addCommand(new InsertCommand(NULL, $html));
+    $response->addCommand(new InsertCommand(NULL, $rendered->__toString()));
     return $response;
   }
 
@@ -201,16 +197,27 @@ final class AjaxBlockRender extends ControllerBase {
       // For now, we only support entity contexts.
       [, $entity_type_id] = explode(':', $data_type);
       try {
-        return $this->entityTypeManager()
+        return EntityContext::fromEntity($this->entityTypeManager()
           ->getStorage($entity_type_id)
-          ->load($data_value);
+          ->load($data_value));
       }
       catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
       try {
-        return json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        $value = json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        return new Context(ContextDefinition::create($data_type), $value);
+      }
+      catch (\JsonException $e) {
+        return NULL;
+      }
+    }
+    if (is_a($typed_data_class, Language::class, TRUE)) {
+      try {
+        $language_id = json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        $value = $this->languageManager()->getLanguage($language_id);
+        return new Context(ContextDefinition::create($data_type), $value);
       }
       catch (\JsonException $e) {
         return NULL;

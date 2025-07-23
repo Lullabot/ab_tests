@@ -76,9 +76,14 @@ final class AbTestsController extends ControllerBase {
 
     // Render the entity.
     $context = new RenderContext();
-    $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
-      return $this->renderer->render($build, TRUE);
-    });
+    try {
+      $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
+        return $this->renderer->render($build, TRUE);
+      });
+    }
+    catch (\Exception $e) {
+      return $response;
+    }
     // Add the assets, libraries, settings, and cache information bubbled up
     // during rendering.
     while (!$context->isEmpty()) {
@@ -90,7 +95,7 @@ final class AbTestsController extends ControllerBase {
     // Create and add the replace command.
     $response->addCommand(
       new ReplaceCommand(
-        sprintf('[data-ab-tests-entity-root="%s"]', $uuid),
+        sprintf('[data-ab-tests-instance-id="%s"]', $uuid),
         $rendered->__toString()
       )
     );

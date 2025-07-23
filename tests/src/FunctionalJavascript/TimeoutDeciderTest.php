@@ -26,7 +26,7 @@ class TimeoutDeciderTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->drupalGet('node/' . $node->id());
 
     // Assert initial state.
-    $this->assertSession()->elementExists('css', '[data-ab-tests-entity-root]');
+    $this->assertSession()->elementExists('css', '[data-ab-tests-instance-id]');
     $this->assertSession()->elementExists('css', '[data-ab-tests-decider-status]');
 
     // @todo Figure out how to assert that the new content is rendered with the correct attributes.
