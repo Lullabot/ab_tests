@@ -42,7 +42,7 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     array $configuration,
     string $plugin_id,
     mixed $plugin_definition,
-    BlockManagerInterface $block_manager
+    BlockManagerInterface $block_manager,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->blockManager = $block_manager;
@@ -76,8 +76,8 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockForm($form, FormStateInterface $form_state) {
     $form = parent::blockForm($form, $form_state);
-    
-    // Form implementation will be added in Issue B
+
+    // Form implementation will be added in Issue B.
     return $form;
   }
 
@@ -86,15 +86,16 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
     parent::blockSubmit($form, $form_state);
-    
-    // Configuration save implementation will be added in Issue B
+
+    // Configuration save implementation will be added in Issue B.
+    $form['foo'] = ['#markup' => 'Bar'];
   }
 
   /**
    * {@inheritdoc}
    */
   public function build() {
-    // Render array implementation will be added in Issue C
+    // Render array implementation will be added in Issue C.
     return [];
   }
 
