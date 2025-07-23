@@ -12,11 +12,14 @@ use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\CacheableDependencyInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Form\SubformState;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\Context\Context;
 use Drupal\Core\Plugin\ContextAwarePluginInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
+use Drupal\Component\Utility\NestedArray;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -120,6 +123,8 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
     // Sort options alphabetically.
     asort($block_options);
 
+    $wrapper_id = 'target-block-config-wrapper';
+
     $form['target_block_plugin'] = [
       '#type' => 'select',
       '#title' => $this->t('Target Block'),
@@ -127,7 +132,24 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
       '#options' => ['' => $this->t('- Select a block -')] + $block_options,
       '#default_value' => $config['target_block_plugin'] ?? '',
       '#required' => TRUE,
+      '#ajax' => [
+        'callback' => [$this, 'targetBlockAjaxCallback'],
+        'wrapper' => $wrapper_id,
+        'effect' => 'fade',
+      ],
     ];
+
+    // Configuration wrapper that will be replaced via Ajax.
+    $form['target_block_config_wrapper'] = [
+      '#type' => 'container',
+      '#attributes' => ['id' => $wrapper_id],
+    ];
+
+    // Build the target block configuration form if a block is selected.
+    $selected_block_plugin = $form_state->getValue('target_block_plugin') ?? $config['target_block_plugin'] ?? '';
+    if (!empty($selected_block_plugin)) {
+      $form['target_block_config_wrapper'] += $this->buildTargetBlockConfigurationForm($selected_block_plugin, $form_state);
+    }
 
     $form['render_mode'] = [
       '#type' => 'select',
@@ -144,6 +166,116 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
   }
 
   /**
+   * Ajax callback for target block selection.
+   *
+   * @param array $form
+   *   The form array.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array
+   *   The form element to replace.
+   */
+  public function targetBlockAjaxCallback(array &$form, FormStateInterface $form_state): array {
+    return $form['settings']['target_block_config_wrapper'];
+  }
+
+  /**
+   * Builds the target block configuration form.
+   *
+   * @param string $plugin_id
+   *   The selected block plugin ID.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array
+   *   The configuration form elements.
+   */
+  protected function buildTargetBlockConfigurationForm(string $plugin_id, FormStateInterface $form_state): array {
+    $config = $this->getConfiguration();
+    $block_config = $config['target_block_config'] ?? [];
+
+    try {
+      // Create the target block instance.
+      $target_block = $this->blockManager->createInstance($plugin_id, $block_config);
+
+      // If the block implements PluginFormInterface, build its configuration form.
+      if ($target_block instanceof PluginFormInterface) {
+        $form = [];
+        $subform_parents = ['target_block_config'];
+        $subform_state = SubformState::createForSubform($form, $form_state->getCompleteForm(), $form_state, $subform_parents);
+
+        $config_form = $target_block->buildConfigurationForm($form, $subform_state);
+
+        return [
+          '#type' => 'details',
+          '#title' => $this->t('Block Configuration'),
+          '#open' => TRUE,
+          'target_block_config' => $config_form,
+        ];
+      }
+
+      // If the block doesn't have a configuration form, show a message.
+      return [
+        '#type' => 'details',
+        '#title' => $this->t('Block Configuration'),
+        '#open' => TRUE,
+        'no_config' => [
+          '#markup' => $this->t('This block does not have any configuration options.'),
+        ],
+      ];
+    }
+    catch (PluginException $e) {
+      $this->logger->warning('Failed to create target block @plugin for configuration form: @message', [
+        '@plugin' => $plugin_id,
+        '@message' => $e->getMessage(),
+      ]);
+
+      return [
+        '#type' => 'details',
+        '#title' => $this->t('Block Configuration'),
+        '#open' => TRUE,
+        'error' => [
+          '#markup' => $this->t('Error loading block configuration: @message', [
+            '@message' => $e->getMessage(),
+          ]),
+        ],
+      ];
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function blockValidate($form, FormStateInterface $form_state) {
+    parent::blockValidate($form, $form_state);
+
+    $target_block_plugin = $form_state->getValue('target_block_plugin');
+    if (!empty($target_block_plugin)) {
+      $config = $this->getConfiguration();
+      $block_config = $form_state->getValue('target_block_config') ?? $config['target_block_config'] ?? [];
+
+      try {
+        // Create the target block instance and validate its configuration.
+        $target_block = $this->blockManager->createInstance($target_block_plugin, $block_config);
+
+        if ($target_block instanceof PluginFormInterface) {
+          $form_element = $form['settings']['target_block_config_wrapper']['target_block_config'] ?? [];
+          $subform_parents = ['target_block_config'];
+          $subform_state = SubformState::createForSubform($form_element, $form, $form_state, $subform_parents);
+
+          $target_block->validateConfigurationForm($form_element, $subform_state);
+        }
+      }
+      catch (PluginException $e) {
+        $form_state->setErrorByName('target_block_plugin', $this->t('Invalid target block plugin: @message', [
+          '@message' => $e->getMessage(),
+        ]));
+      }
+    }
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function blockSubmit($form, FormStateInterface $form_state) {
@@ -151,6 +283,39 @@ class AbTestProxyBlock extends BlockBase implements ContainerFactoryPluginInterf
 
     $this->configuration['target_block_plugin'] = $form_state->getValue('target_block_plugin');
     $this->configuration['render_mode'] = $form_state->getValue('render_mode');
+
+    // Handle target block configuration.
+    $target_block_plugin = $form_state->getValue('target_block_plugin');
+    if (!empty($target_block_plugin)) {
+      $block_config = $form_state->getValue('target_block_config') ?? [];
+
+      try {
+        // Create the target block instance and process its configuration.
+        $target_block = $this->blockManager->createInstance($target_block_plugin, $block_config);
+
+        if ($target_block instanceof PluginFormInterface) {
+          $form_element = $form['settings']['target_block_config_wrapper']['target_block_config'] ?? [];
+          $subform_parents = ['target_block_config'];
+          $subform_state = SubformState::createForSubform($form_element, $form, $form_state, $subform_parents);
+
+          $target_block->submitConfigurationForm($form_element, $subform_state);
+          $this->configuration['target_block_config'] = $target_block->getConfiguration();
+        }
+        else {
+          $this->configuration['target_block_config'] = $block_config;
+        }
+      }
+      catch (PluginException $e) {
+        $this->logger->warning('Failed to process target block configuration for @plugin: @message', [
+          '@plugin' => $target_block_plugin,
+          '@message' => $e->getMessage(),
+        ]);
+        $this->configuration['target_block_config'] = [];
+      }
+    }
+    else {
+      $this->configuration['target_block_config'] = [];
+    }
   }
 
   /**
