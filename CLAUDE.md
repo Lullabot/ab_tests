@@ -26,6 +26,10 @@ This is the A/B Tests Drupal module, a flexible and extensible system for runnin
 The module uses Drupal's plugin system with two main plugin types:
 - **AbVariantDecider** (`src/Plugin/AbVariantDecider/`) - Decision logic plugins
 - **AbAnalytics** (`src/Plugin/AbAnalytics/`) - Analytics tracking plugins
+## Development Principles
+
+- Favor a more functional programming style: use `array_map`, `array_filter`, `array_reduce`, ... over other types of loops (like foreach)
+- Favor polymorphism over conditional cases. When possible use the factory design pattern, and subclasses (using a strategy design pattern), over if...elsif...else or switch structures.
 
 ## Development Commands
 
@@ -169,7 +173,7 @@ This section details the complete execution flow for both A/B testing features, 
 1. **View Mode Selection**: `entityViewModeAlter()` checks if this is the full page entity and if A/B testing is active. If so, it sets the view mode to the configured default from `settings['default']['display_mode']`.
 
 2. **Asset Attachment**: `entityViewAlter()` attaches the decider JavaScript library and adds crucial data attributes:
-   - `data-ab-tests-entity-root="{entity-uuid}"` - Entity identifier for Ajax requests  
+   - `data-ab-tests-entity-root="{entity-uuid}"` - Entity identifier for Ajax requests
    - `data-ab-tests-feature="ab_view_modes"` - Feature type identifier
    - `data-ab-tests-decider-status="idle"` - Initial status for JavaScript
    - `class="ab-test-loading"` - Initial loading state
