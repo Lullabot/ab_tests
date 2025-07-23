@@ -1,0 +1,15 @@
+# Configuration schema for the A/B Blocks module.
+
+block.settings.ab_test_proxy_block:
+  type: mapping
+  label: 'A/B Test Proxy Block settings'
+  mapping:
+    target_block_plugin:
+      type: string
+      label: 'Target block plugin ID'
+    target_block_config:
+      type: sequence
+      label: 'Target block configuration'
+    render_mode:
+      type: string
+      label: 'Render mode'
