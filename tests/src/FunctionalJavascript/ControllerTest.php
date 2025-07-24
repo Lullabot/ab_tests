@@ -68,7 +68,7 @@ class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
         // Verify the HTML contains the expected data attribute.
         $this->assertStringContainsString('data-ab-tests-decision="teaser"', $command['data']);
         // Verify the selector targets the expected node.
-        $this->assertStringContainsString('data-ab-tests-entity-root="' . $node->uuid() . '"', $command['selector']);
+        $this->assertStringContainsString('data-ab-tests-instance-id="' . $node->uuid() . '"', $command['selector']);
       }
       if ($command['command'] === 'settings') {
         $settings_command_found = TRUE;

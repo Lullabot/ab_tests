@@ -14,14 +14,19 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Plugin\Context\Context;
+use Drupal\Core\Plugin\Context\ContextDefinition;
+use Drupal\Core\Plugin\Context\EntityContext;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\TypedData\Plugin\DataType\Language;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
 use Drupal\layout_builder\Section;
 use Drupal\layout_builder\SectionComponent;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -40,12 +45,15 @@ final class AjaxBlockRender extends ControllerBase {
    *   The typed data manager.
    * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
    *   The entity display repository.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger service.
    */
   public function __construct(
     protected RendererInterface $renderer,
     protected BlockManagerInterface $blockManager,
     protected TypedDataManagerInterface $typedDataManager,
     protected EntityDisplayRepositoryInterface $entityDisplayRepository,
+    protected LoggerInterface $logger,
   ) {}
 
   /**
@@ -57,6 +65,7 @@ final class AjaxBlockRender extends ControllerBase {
       $container->get('plugin.manager.block'),
       $container->get('typed_data_manager'),
       $container->get('entity_display.repository'),
+      $container->get('logger.factory')->get('ab_tests'),
     );
   }
 
@@ -92,19 +101,24 @@ final class AjaxBlockRender extends ControllerBase {
       $serialized_context_values = json_decode($json_contexts, TRUE, 512, JSON_THROW_ON_ERROR);
     }
     catch (\JsonException $e) {
+      $this->logError('JSON decoding failed for block @plugin_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
     $context_values = $this->deserializeContextValues($serialized_context_values);
-    $entities = array_filter(
-      $context_values,
-      static fn($context) => $context instanceof ContentEntityInterface,
-    );
 
-    $section_component = array_reduce(
-      $entities,
-      fn (?SectionComponent $component, ContentEntityInterface $entity): ?SectionComponent =>
-        $component ?: $this->findLayoutBuilderComponent($entity, $placement_id),
-    );
+    $root_entity_context = $this->resolveRootEntityContext($context_values);
+    if (!$root_entity_context) {
+      return $response;
+    }
+
+    $root_entity = $root_entity_context->getContextValue();
+    if (!$root_entity instanceof ContentEntityInterface) {
+      return $response;
+    }
+    $section_component = $this->findLayoutBuilderComponent($root_entity, $placement_id);
 
     // If no section component found, return empty response.
     if (!$section_component) {
@@ -117,33 +131,36 @@ final class AjaxBlockRender extends ControllerBase {
         ->get('debug_mode');
       $section_component->setConfiguration($configuration);
       $build = $section_component->toRenderArray($context_values);
-      // This is used in the analytics plugins (js) to detect the block to
-      // track.
-      $build['#attributes']['data-ab-tests-tracking-info'] = $placement_id;
     }
     catch (\Exception $e) {
-      // If configuration or build creation fails, return an empty  response.
+      $this->logError('Block configuration failed for plugin @plugin_id with placement @placement_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@placement_id' => $placement_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
 
     $context = new RenderContext();
     try {
-      $html = $this->renderer->executeInRenderContext($context, function () use ($build) {
-        return $this->renderer->render($build);
+      $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
+        return $this->renderer->render($build, TRUE);
       });
     }
     catch (\Exception $e) {
-      // If rendering fails, return empty response.
+      $this->logError('Block rendering failed for plugin @plugin_id with placement @placement_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@placement_id' => $placement_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
-
-    $metadata_from_render = $context->pop();
-    if ($metadata_from_render instanceof BubbleableMetadata) {
-      $attachments_from_render = $metadata_from_render->getAttachments();
-      // Add caching information for the render metadata.
-      $response->addCacheableDependency($metadata_from_render);
-      // Add the attachments from the render process.
-      $response->addAttachments($attachments_from_render);
+    // Add the assets, libraries, settings, and cache information bubbled up
+    // during rendering.
+    while (!$context->isEmpty()) {
+      $metadata = $context->pop();
+      $response->addAttachments($metadata->getAttachments());
+      $response->addCacheableDependency($metadata);
     }
 
     $dependency = new BubbleableMetadata();
@@ -157,7 +174,7 @@ final class AjaxBlockRender extends ControllerBase {
 
     // The selector for the insert command is NULL as the new content will
     // replace the element making the Ajax call.
-    $response->addCommand(new InsertCommand(NULL, $html));
+    $response->addCommand(new InsertCommand(NULL, $rendered->__toString()));
     return $response;
   }
 
@@ -201,22 +218,83 @@ final class AjaxBlockRender extends ControllerBase {
       // For now, we only support entity contexts.
       [, $entity_type_id] = explode(':', $data_type);
       try {
-        return $this->entityTypeManager()
+        return EntityContext::fromEntity($this->entityTypeManager()
           ->getStorage($entity_type_id)
-          ->load($data_value);
+          ->load($data_value));
       }
-      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException | PluginNotFoundException $e) {
+        // Silently ignore plugin exceptions and return NULL.
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
       try {
-        return json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        $value = json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        return new Context(ContextDefinition::create($data_type), $value);
+      }
+      catch (\JsonException $e) {
+        return NULL;
+      }
+    }
+    if (is_a($typed_data_class, Language::class, TRUE)) {
+      try {
+        $language_id = json_decode($data_value, TRUE, 512, JSON_THROW_ON_ERROR);
+        $value = $this->languageManager()->getLanguage($language_id);
+        return new Context(ContextDefinition::create($data_type), $value);
       }
       catch (\JsonException $e) {
         return NULL;
       }
     }
     return NULL;
+  }
+
+  /**
+   * Resolves the root entity context from context values using guard clauses.
+   *
+   * @param array $context_values
+   *   The context values to search.
+   *
+   * @return \Drupal\Core\Plugin\Context\Context|null
+   *   The root entity context if found, otherwise NULL.
+   */
+  private function resolveRootEntityContext(array $context_values): ?Context {
+    $context_keys = ['layout_builder.entity', 'entity', 'node'];
+
+    foreach ($context_keys as $key) {
+      if (!isset($context_values[$key])) {
+        continue;
+      }
+
+      $context = $context_values[$key];
+      if (!$context instanceof Context) {
+        continue;
+      }
+
+      $entity = $context->getContextValue();
+      if (!$entity instanceof ContentEntityInterface) {
+        continue;
+      }
+
+      return $context;
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Logs an error message if debug mode is enabled.
+   *
+   * @param string $message
+   *   The message to log.
+   * @param array $variables
+   *   Array of variables to replace in the message.
+   */
+  private function logError(string $message, array $variables = []): void {
+    if (!$this->configFactory->get('ab_tests.settings')->get('debug_mode')) {
+      return;
+    }
+
+    $this->logger->error($message, $variables);
   }
 
   /**

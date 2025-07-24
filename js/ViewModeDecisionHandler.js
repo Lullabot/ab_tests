@@ -10,7 +10,7 @@ class ViewModeDecisionHandler extends BaseDecisionHandler {
    */
   async _loadVariant(element, decision) {
     const displayMode = decision.decisionValue;
-    const uuid = element.getAttribute('data-ab-tests-entity-root');
+    const uuid = element.getAttribute('data-ab-tests-instance-id');
 
     // Validate inputs to prevent security issues
     if (!uuid || !displayMode) {
