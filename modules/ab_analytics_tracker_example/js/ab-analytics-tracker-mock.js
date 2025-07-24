@@ -2,10 +2,10 @@
   /**
    * Behavior to initialize timeout tracker.
    */
-  Drupal.behaviors.abVariantTrackerTimeout = {
+  Drupal.behaviors.abAnalyticsTrackerMock = {
     async attach(context, settings) {
       if (
-        context instanceof Document ||
+        !(context instanceof HTMLElement) ||
         !context.hasAttribute('data-ab-tests-tracking-info')
       ) {
         return;

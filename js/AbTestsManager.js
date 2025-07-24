@@ -9,15 +9,15 @@ class AbTestsManager {
    *   The element.
    * @param {BaseDecider} decider
    *   The decider instance that implements decide().
-   * @param {Object} settings
-   *   The drupalSettings.
+   * @param {Object} featureSettings
+   *   The drupalSettings for all the A/B test features.
    * @param {boolean} debug
    *   Weather to add debug messages to the console.
    *
    * @return {Promise<Decision>}
    *   Resolves with the decision once made.
    */
-  registerDecider(element, decider, settings, debug = false) {
+  registerDecider(element, decider, featureSettings, debug = false) {
     const status = 'pending';
     decider.setStatus(status);
     decider.setDebug(debug);
@@ -34,7 +34,7 @@ class AbTestsManager {
     // element in the page (if more than one).
     const decisionHandler = new DecisionHandlerFactory().createInstance(
       element.getAttribute('data-ab-tests-feature'),
-      settings,
+      featureSettings,
       debug,
       this.hideLoadingSkeleton,
     );
@@ -60,10 +60,20 @@ class AbTestsManager {
     let status = 'initializing';
     tracker.setStatus(status);
     tracker.setDebug(debug);
-    debug && console.debug('[A/B Tests]', 'Initializing tracker.');
+    debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Initializing tracker.',
+        tracker.constructor.name,
+      );
     element.setAttribute('data-ab-tests-tracker-status', status);
     await tracker.initialize();
-    debug && console.debug('[A/B Tests]', 'Tracker initialized.');
+    debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Tracker initialized.',
+        tracker.constructor.name,
+      );
     status = 'pending';
     tracker.setStatus(status);
     element.setAttribute('data-ab-tests-tracker-status', status);
@@ -128,16 +138,36 @@ class AbTestsManager {
    */
   async _doTrack(element, tracker, trackingInfo, debug) {
     try {
-      debug && console.debug('[A/B Tests]', 'Tracking is about to start.');
+      debug &&
+        console.debug(
+          '[A/B Tests]',
+          'Tracking is about to start.',
+          tracker.constructor.name,
+          trackingInfo,
+        );
       const result = await tracker.track(trackingInfo, element);
       const status = 'success';
       tracker.setStatus(status);
       element.setAttribute('data-ab-tests-tracker-status', status);
-      debug && console.debug('[A/B Tests]', 'Tracking was successful.', result);
+      debug &&
+        console.debug(
+          '[A/B Tests]',
+          'Tracking was successful.',
+          tracker.constructor.name,
+          trackingInfo,
+          result,
+        );
       return result;
     } catch (error) {
       tracker.onError(error);
-      debug && console.error('[A/B Tests]', 'Tracking failed:', error);
+      debug &&
+        console.error(
+          '[A/B Tests]',
+          'Tracking failed:',
+          tracker.constructor.name,
+          trackingInfo,
+          error,
+        );
     }
   }
 
@@ -150,7 +180,12 @@ class AbTestsManager {
    *   Whether debug mode is enabled.
    */
   hideLoadingSkeleton(element, debug) {
-    debug && console.debug('[A/B Tests]', 'Un-hiding the default variant.');
+    debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Un-hiding the default variant.',
+        element.getAttribute('data-ab-tests-instance-id'),
+      );
     element.classList.remove('ab-test-loading');
   }
 }

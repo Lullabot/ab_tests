@@ -10,7 +10,7 @@ class BaseTracker extends BaseAction {
    * @return {Promise<unknown>}
    *   The promise of initialization.
    */
-  initialize() {
+  async initialize() {
     return Promise.resolve();
   }
 
