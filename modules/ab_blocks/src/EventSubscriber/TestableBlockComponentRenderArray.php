@@ -7,7 +7,6 @@ use Drupal\ab_tests\AbAnalyticsPluginManager;
 use Drupal\ab_tests\AbVariantDeciderInterface;
 use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\Component\Plugin\ContextAwarePluginInterface;
-use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockPluginInterface;
@@ -99,7 +98,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     $original_build = $event->getBuild();
     $build = [
       '#weight' => $original_build['#weight'] ?? $event->getComponent()
-          ->getWeight() ?? 99,
+        ->getWeight() ?? 99,
       [
         'content' => [
           '#type' => 'container',
@@ -192,10 +191,12 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       assert($variant_decider instanceof AbVariantDeciderInterface);
       $decider_build = $variant_decider->toRenderable(
         $placement_id,
-        ['experimentsSelector' => sprintf(
+        [
+          'experimentsSelector' => sprintf(
           '[data-ab-tests-instance-id="%s"]',
           $placement_id,
-        )],
+          ),
+        ],
       );
     }
     catch (PluginException $e) {
