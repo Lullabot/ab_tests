@@ -10,6 +10,7 @@ use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
@@ -26,6 +27,7 @@ use Drupal\Core\TypedData\TypedDataManagerInterface;
 use Drupal\layout_builder\Entity\LayoutBuilderEntityViewDisplay;
 use Drupal\layout_builder\Section;
 use Drupal\layout_builder\SectionComponent;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -44,12 +46,18 @@ final class AjaxBlockRender extends ControllerBase {
    *   The typed data manager.
    * @param \Drupal\Core\Entity\EntityDisplayRepositoryInterface $entityDisplayRepository
    *   The entity display repository.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger service.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory service.
    */
   public function __construct(
     protected RendererInterface $renderer,
     protected BlockManagerInterface $blockManager,
     protected TypedDataManagerInterface $typedDataManager,
     protected EntityDisplayRepositoryInterface $entityDisplayRepository,
+    protected LoggerInterface $logger,
+    protected ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -61,6 +69,8 @@ final class AjaxBlockRender extends ControllerBase {
       $container->get('plugin.manager.block'),
       $container->get('typed_data_manager'),
       $container->get('entity_display.repository'),
+      $container->get('logger.factory')->get('ab_tests'),
+      $container->get('config.factory'),
     );
   }
 
@@ -96,11 +106,19 @@ final class AjaxBlockRender extends ControllerBase {
       $serialized_context_values = json_decode($json_contexts, TRUE, 512, JSON_THROW_ON_ERROR);
     }
     catch (\JsonException $e) {
+      $this->logError('JSON decoding failed for block @plugin_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
     $context_values = $this->deserializeContextValues($serialized_context_values);
 
-    $root_entity_context = $context_values['layout_builder.entity'] ?? $context_values['entity'] ?? $context_values['node'] ?? NULL;
+    $root_entity_context = $this->resolveRootEntityContext($context_values);
+    if (!$root_entity_context) {
+      return $response;
+    }
+
     $root_entity = $root_entity_context->getContextValue();
     if (!$root_entity instanceof ContentEntityInterface) {
       return $response;
@@ -120,7 +138,11 @@ final class AjaxBlockRender extends ControllerBase {
       $build = $section_component->toRenderArray($context_values);
     }
     catch (\Exception $e) {
-      // If configuration or build creation fails, return an empty  response.
+      $this->logError('Block configuration failed for plugin @plugin_id with placement @placement_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@placement_id' => $placement_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
 
@@ -131,6 +153,11 @@ final class AjaxBlockRender extends ControllerBase {
       });
     }
     catch (\Exception $e) {
+      $this->logError('Block rendering failed for plugin @plugin_id with placement @placement_id: @message', [
+        '@plugin_id' => $plugin_id,
+        '@placement_id' => $placement_id,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
     // Add the assets, libraries, settings, and cache information bubbled up
@@ -200,7 +227,8 @@ final class AjaxBlockRender extends ControllerBase {
           ->getStorage($entity_type_id)
           ->load($data_value));
       }
-      catch (InvalidPluginDefinitionException | PluginNotFoundException  $e) {
+      catch (InvalidPluginDefinitionException | PluginNotFoundException $e) {
+        // Silently ignore plugin exceptions and return NULL.
       }
     }
     if (is_a($typed_data_class, PrimitiveInterface::class, TRUE)) {
@@ -223,6 +251,55 @@ final class AjaxBlockRender extends ControllerBase {
       }
     }
     return NULL;
+  }
+
+  /**
+   * Resolves the root entity context from context values using guard clauses.
+   *
+   * @param array $context_values
+   *   The context values to search.
+   *
+   * @return \Drupal\Core\Plugin\Context\Context|null
+   *   The root entity context if found, otherwise NULL.
+   */
+  private function resolveRootEntityContext(array $context_values): ?Context {
+    $context_keys = ['layout_builder.entity', 'entity', 'node'];
+
+    foreach ($context_keys as $key) {
+      if (!isset($context_values[$key])) {
+        continue;
+      }
+
+      $context = $context_values[$key];
+      if (!$context instanceof Context) {
+        continue;
+      }
+
+      $entity = $context->getContextValue();
+      if (!$entity instanceof ContentEntityInterface) {
+        continue;
+      }
+
+      return $context;
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Logs an error message if debug mode is enabled.
+   *
+   * @param string $message
+   *   The message to log.
+   * @param array $variables
+   *   Array of variables to replace in the message.
+   */
+  private function logError(string $message, array $variables = []): void {
+    if (!$this->configFactory->get('ab_tests.settings')->get('debug_mode')) {
+      return;
+    }
+
+    $this->logger->error($message, $variables);
   }
 
   /**

@@ -7,10 +7,12 @@ namespace Drupal\ab_tests\Controller;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\Core\Cache\CacheableAjaxResponse;
+use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -24,9 +26,15 @@ final class AbTestsController extends ControllerBase {
    *
    * @param \Drupal\Core\Render\RendererInterface $renderer
    *   The renderer service.
+   * @param \Psr\Log\LoggerInterface $logger
+   *   The logger service.
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
+   *   The config factory service.
    */
   public function __construct(
     protected readonly RendererInterface $renderer,
+    protected readonly LoggerInterface $logger,
+    protected readonly ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -34,7 +42,9 @@ final class AbTestsController extends ControllerBase {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('renderer')
+      $container->get('renderer'),
+      $container->get('logger.factory')->get('ab_tests'),
+      $container->get('config.factory')
     );
   }
 
@@ -60,6 +70,10 @@ final class AbTestsController extends ControllerBase {
         ->loadByProperties(['uuid' => $uuid]);
     }
     catch (PluginException $e) {
+      $this->logError('Entity loading failed for UUID @uuid: @message', [
+        '@uuid' => $uuid,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
 
@@ -82,6 +96,11 @@ final class AbTestsController extends ControllerBase {
       });
     }
     catch (\Exception $e) {
+      $this->logError('Entity rendering failed for UUID @uuid with display mode @display_mode: @message', [
+        '@uuid' => $uuid,
+        '@display_mode' => $display_mode,
+        '@message' => $e->getMessage(),
+      ]);
       return $response;
     }
     // Add the assets, libraries, settings, and cache information bubbled up
@@ -101,6 +120,22 @@ final class AbTestsController extends ControllerBase {
     );
 
     return $response;
+  }
+
+  /**
+   * Logs an error message if debug mode is enabled.
+   *
+   * @param string $message
+   *   The message to log.
+   * @param array $variables
+   *   Array of variables to replace in the message.
+   */
+  private function logError(string $message, array $variables = []): void {
+    if (!$this->configFactory->get('ab_tests.settings')->get('debug_mode')) {
+      return;
+    }
+
+    $this->logger->error($message, $variables);
   }
 
 }
