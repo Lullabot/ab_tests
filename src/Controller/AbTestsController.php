@@ -7,7 +7,6 @@ namespace Drupal\ab_tests\Controller;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\Core\Cache\CacheableAjaxResponse;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Render\RenderContext;
@@ -28,13 +27,10 @@ final class AbTestsController extends ControllerBase {
    *   The renderer service.
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger service.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The config factory service.
    */
   public function __construct(
     protected readonly RendererInterface $renderer,
     protected readonly LoggerInterface $logger,
-    protected readonly ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -44,7 +40,6 @@ final class AbTestsController extends ControllerBase {
     return new static(
       $container->get('renderer'),
       $container->get('logger.factory')->get('ab_tests'),
-      $container->get('config.factory')
     );
   }
 

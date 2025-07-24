@@ -10,7 +10,6 @@ use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
-use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
@@ -48,8 +47,6 @@ final class AjaxBlockRender extends ControllerBase {
    *   The entity display repository.
    * @param \Psr\Log\LoggerInterface $logger
    *   The logger service.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
-   *   The config factory service.
    */
   public function __construct(
     protected RendererInterface $renderer,
@@ -57,7 +54,6 @@ final class AjaxBlockRender extends ControllerBase {
     protected TypedDataManagerInterface $typedDataManager,
     protected EntityDisplayRepositoryInterface $entityDisplayRepository,
     protected LoggerInterface $logger,
-    protected ConfigFactoryInterface $configFactory,
   ) {}
 
   /**
@@ -70,7 +66,6 @@ final class AjaxBlockRender extends ControllerBase {
       $container->get('typed_data_manager'),
       $container->get('entity_display.repository'),
       $container->get('logger.factory')->get('ab_tests'),
-      $container->get('config.factory'),
     );
   }
 
