@@ -15,7 +15,7 @@
 
         once(
           'ab-variant-decider-null',
-          actualDeciderSettings.experimentsSelector,
+          deciderSettings.experimentsSelector,
           context,
         ).forEach(element => {
           const decider = new NullDecider();
