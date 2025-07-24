@@ -6,6 +6,6 @@ class NullTracker extends BaseTracker {
    * @inheritDoc
    */
   async track(trackingInfo, element) {
-    return Promise.reject(new Error('NullTracker: No tracking configured'));
+    return Promise.resolve(new Error('NullTracker: No tracking configured'));
   }
 }
