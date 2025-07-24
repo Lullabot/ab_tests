@@ -91,7 +91,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @private
    */
   _enhanceBlockMetadata(element, decision) {
-    const placementId = element.getAttribute('data-ab-blocks-placement-id');
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
     if (!placementId) {
       throw new Error(
         '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
@@ -137,6 +137,40 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     blockMetadata.deciderMeta.decisionId = decision.decisionId;
 
     return blockMetadata;
+  }
+
+  /**
+   * Dispatch the custom event.
+   *
+   * This will be used by other parts of the application to subscribe to the
+   * results of the test.
+   *
+   * @param {HTMLElement} element
+   *   The element under test.
+   * @param {Decision} decision
+   *   The decision object.
+   *
+   * @protected
+   */
+  _dispatchCustomEvent(element, decision) {
+    const event = new CustomEvent(this.eventName, {
+      detail: {},
+      bubbles: true,
+    });
+    event.detail.element = element;
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
+    event.detail.decision = decision;
+    event.detail.status = this.status;
+    event.detail.settings = this.settings?.blocks?.[placementId];
+    event.detail.error = this.error;
+    this.debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Dispatching event after processing the new content.',
+        event,
+      );
+    document.dispatchEvent(event);
+    this.debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
   }
 
   /**
@@ -196,7 +230,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     // If the combined settings before and after the decision are the same, then
     // the decision didn't change anything.
     // IMPORTANT: The variant decider should return JSON stringified data.
-    const placementId = element.getAttribute('data-ab-blocks-placement-id');
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
     if (!placementId) {
       throw new Error(
         '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',

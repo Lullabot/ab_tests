@@ -207,7 +207,15 @@ class AbTestsHooks {
         $settings['variants']['settings'] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
-      $decider_build = $variant_decider->toRenderable(['experimentsSelector' => '[data-ab-tests-entity-root]']);
+      $decider_build = $variant_decider->toRenderable(
+        $entity->uuid(),
+        [
+          'experimentsSelector' => sprintf(
+          '[data-ab-tests-instance-id="%s"]',
+          $entity->uuid(),
+          ),
+        ],
+      );
     }
     catch (PluginException $e) {
       $decider_build = [
@@ -226,7 +234,7 @@ class AbTestsHooks {
     $build['#attributes']['data-ab-tests-feature'] = 'ab_view_modes';
     unset($build['ab_tests_decider']['#attached']);
 
-    $build['#attributes']['data-ab-tests-entity-root'] = $entity->uuid();
+    $build['#attributes']['data-ab-tests-instance-id'] = $entity->uuid();
   }
 
   /**
