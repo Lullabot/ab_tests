@@ -28,6 +28,6 @@ class BaseDecider extends BaseAction {
    *   A unique identifier for this decision.
    */
   generateDecisionId() {
-    return `decision-${crypto.randomUUID()}`;
+    return `decision-${Math.random().toString(36).slice(2, 11)}`;
   }
 }
