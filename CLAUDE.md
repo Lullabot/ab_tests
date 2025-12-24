@@ -26,6 +26,10 @@ This is the A/B Tests Drupal module, a flexible and extensible system for runnin
 The module uses Drupal's plugin system with two main plugin types:
 - **AbVariantDecider** (`src/Plugin/AbVariantDecider/`) - Decision logic plugins
 - **AbAnalytics** (`src/Plugin/AbAnalytics/`) - Analytics tracking plugins
+## Development Principles
+
+- Favor a more functional programming style: use `array_map`, `array_filter`, `array_reduce`, ... over other types of loops (like foreach)
+- Favor polymorphism over conditional cases. When possible use the factory design pattern, and subclasses (using a strategy design pattern), over if...elsif...else or switch structures.
 
 ## Development Commands
 
@@ -238,7 +242,7 @@ This section details the complete execution flow for both A/B testing features, 
 1. **View Mode Selection**: `entityViewModeAlter()` checks if this is the full page entity and if A/B testing is active. If so, it sets the view mode to the configured default from `settings['default']['display_mode']`.
 
 2. **Asset Attachment**: `entityViewAlter()` attaches the decider JavaScript library and adds crucial data attributes:
-   - `data-ab-tests-entity-root="{entity-uuid}"` - Entity identifier for Ajax requests  
+   - `data-ab-tests-instance-id="{entity-uuid}"` - Entity identifier for Ajax requests
    - `data-ab-tests-feature="ab_view_modes"` - Feature type identifier
    - `data-ab-tests-decider-status="idle"` - Initial status for JavaScript
    - `class="ab-test-loading"` - Initial loading state
@@ -307,7 +311,7 @@ This section details the complete execution flow for both A/B testing features, 
 
 **Process:**
 1. **Block Enhancement**: The event subscriber adds A/B testing metadata to blocks that have testing configured:
-   - `data-ab-blocks-placement-id="{placement-id}"` - Unique block identifier
+   - `data-ab-tests-instance-id="{placement-id}"` - Unique block identifier
    - `data-ab-tests-feature="ab_blocks"` - Feature type
    - `data-ab-tests-decider-status="idle"` - Initial status
    - Block configuration and context serialization in drupalSettings
@@ -325,7 +329,7 @@ This section details the complete execution flow for both A/B testing features, 
 **Handler:** `modules/ab_blocks/js/BlockDecisionHandler.js`
 
 **Flow:**
-1. **Block Detection**: Scans for `[data-ab-blocks-placement-id]` elements
+1. **Block Detection**: Scans for `[data-ab-tests-instance-id]` elements
 2. **Metadata Enhancement**: `_enhanceBlockMetadata()` enriches block data with decision information
 3. **Configuration Merging**: Combines original block settings with variant settings from decider
 4. **Decision Validation**: Checks if the merged configuration differs from original

@@ -1,0 +1,9 @@
+ab_tests.variants.feature_flag_decider:
+  type: mapping
+  mapping:
+    id:
+      type: string
+      label: 'Plugin ID'
+    flag_id:
+      type: string
+      label: 'Feature Flag ID'

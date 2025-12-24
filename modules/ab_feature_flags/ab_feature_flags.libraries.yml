@@ -1,0 +1,9 @@
+ab_variant_decider.feature_flag:
+  js:
+    js/FeatureFlagDecider.js: { }
+    js/ab-variant-decider-feature-flag.js: { }
+  dependencies:
+    - core/once
+    - ab_tests/ab_tests
+    - feature_flags/feature_flags
+    - feature_flags/base

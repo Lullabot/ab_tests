@@ -9,12 +9,12 @@ class BaseDecisionHandler {
    *
    * @param {Object} settings
    *   The drupalSettings object.
-   * @param {Function} hideLoadingSkeleton
-   *   Function to hide loading skeleton.
    * @param {boolean} debug
    *   Whether debug mode is enabled.
+   * @param {Function} hideLoadingSkeleton
+   *   Function to hide loading skeleton.
    */
-  constructor(settings, hideLoadingSkeleton, debug) {
+  constructor(settings, debug, hideLoadingSkeleton) {
     this.eventName = 'ab_tests:abTestFinished';
     this.settings = settings;
     this.debug = debug;

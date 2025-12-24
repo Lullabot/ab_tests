@@ -2,8 +2,17 @@ class BlockDecisionHandler extends BaseDecisionHandler {
   /**
    * @inheritDoc
    */
+  async handleDecision(element, decision) {
+    // Pre-enhance block metadata to avoid a nasty race condition.
+    this._enhanceBlockMetadata(element, decision);
+    return super.handleDecision(element, decision);
+  }
+
+  /**
+   * @inheritDoc
+   */
   async _loadVariant(element, decision) {
-    const blockMetadata = this._enhanceBlockMetadata(element, decision);
+    const blockMetadata = this._getBlockMetadata(element);
     const {
       pluginId,
       placementId,
@@ -43,6 +52,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
       httpMethod: 'GET',
       url: `/ab-blocks/ajax-block/${pluginId}/${placementId}/${encodedConfig}/${encodedContext}`,
       wrapper: targetHtmlId,
+      element,
     });
     await new Promise((resolve, reject) => {
       abBlockLoader
@@ -50,8 +60,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
         .then(response => {
           this.debug &&
             console.debug(
-              '[A/B Tests]',
-              'The block was rendered with the new settings.',
+              '[A/B Tests] The block was rendered with the new settings.',
               combinedSettings,
               pluginId,
               placementId,
@@ -66,10 +75,11 @@ class BlockDecisionHandler extends BaseDecisionHandler {
           reject(error);
         });
     });
-    console.debug(
-      '[A/B Blocks] Block successfully rendered using the configuration from the decider.',
-      this.status,
-    );
+    this.debug &&
+      console.debug(
+        '[A/B Blocks] Block successfully rendered using the configuration from the decider.',
+        this.status,
+      );
   }
 
   /**
@@ -84,24 +94,10 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @param {Decision} decision
    *   The decision value.
    *
-   * @return {Object}
-   *   The block metadata.
-   *
    * @private
    */
   _enhanceBlockMetadata(element, decision) {
-    const placementId = element.getAttribute('data-ab-blocks-placement-id');
-    if (!placementId) {
-      throw new Error(
-        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
-      );
-    }
-    const blockMetadata = this.settings?.blocks?.[placementId];
-    if (!blockMetadata) {
-      throw new Error(
-        `[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`,
-      );
-    }
+    const blockMetadata = this._getBlockMetadata(element);
     // If the HTML element does not have an ID, generate one and store it in the
     // block metadata object.
     blockMetadata.targetHtmlId = element.getAttribute('id');
@@ -134,8 +130,67 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     blockMetadata.variantBlockSettings = parsedDecisionValue;
     blockMetadata.deciderMeta = decision.decisionData;
     blockMetadata.deciderMeta.decisionId = decision.decisionId;
+  }
 
+  /**
+   * Get the metadata in drupalSettings for this block.
+   *
+   * @param {HTMLElement} element
+   *   The block div.
+   *
+   * @return {Object}
+   *   The block metadata object.
+   *
+   * @private
+   */
+  _getBlockMetadata(element) {
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
+    if (!placementId) {
+      throw new Error(
+        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
+      );
+    }
+    const blockMetadata = this.settings?.blocks?.[placementId];
+    if (!blockMetadata) {
+      throw new Error(
+        `[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`,
+      );
+    }
     return blockMetadata;
+  }
+
+  /**
+   * Dispatch the custom event.
+   *
+   * This will be used by other parts of the application to subscribe to the
+   * results of the test.
+   *
+   * @param {HTMLElement} element
+   *   The element under test.
+   * @param {Decision} decision
+   *   The decision object.
+   *
+   * @protected
+   */
+  _dispatchCustomEvent(element, decision) {
+    const event = new CustomEvent(this.eventName, {
+      detail: {},
+      bubbles: true,
+    });
+    event.detail.element = element;
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
+    event.detail.decision = decision;
+    event.detail.status = this.status;
+    event.detail.settings = this.settings?.blocks?.[placementId];
+    event.detail.error = this.error;
+    this.debug &&
+      console.debug(
+        '[A/B Tests]',
+        'Dispatching event after processing the new content.',
+        event,
+      );
+    document.dispatchEvent(event);
+    this.debug && console.debug('[A/B Tests]', 'Event dispatched.', event);
   }
 
   /**
@@ -195,7 +250,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     // If the combined settings before and after the decision are the same, then
     // the decision didn't change anything.
     // IMPORTANT: The variant decider should return JSON stringified data.
-    const placementId = element.getAttribute('data-ab-blocks-placement-id');
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
     if (!placementId) {
       throw new Error(
         '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',

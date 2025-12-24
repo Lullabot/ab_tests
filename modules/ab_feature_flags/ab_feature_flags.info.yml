@@ -1,0 +1,8 @@
+name: Feature Flag A/B Variant Decider
+description: Uses feature flags to determine A/B test variants
+package: A/B Testing
+core_version_requirement: ^10 || ^11
+type: module
+dependencies:
+  - ab_tests:ab_tests
+  - feature_flags:feature_flags

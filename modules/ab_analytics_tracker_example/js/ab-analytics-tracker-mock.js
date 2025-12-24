@@ -2,14 +2,18 @@
   /**
    * Behavior to initialize timeout tracker.
    */
-  Drupal.behaviors.abVariantTrackerTimeout = {
-    async attach(context, { ab_tests: { analyticsSettings, debug } }) {
+  Drupal.behaviors.abAnalyticsTrackerMock = {
+    async attach(context, settings) {
       if (
-        context instanceof Document ||
-        !context.hasAttribute('data-ab-tests-decision')
+        !(context instanceof HTMLElement) ||
+        !context.hasAttribute('data-ab-tests-tracking-info')
       ) {
         return;
       }
+      const {
+        ab_tests: { debug },
+        ab_analytics_tracker_example: { analyticsSettings },
+      } = settings;
       const abTestsManager = new AbTestsManager();
       const apiKey = analyticsSettings?.apiKey || '';
       const config = {

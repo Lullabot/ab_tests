@@ -10,7 +10,7 @@ class ViewModeDecisionHandler extends BaseDecisionHandler {
    */
   async _loadVariant(element, decision) {
     const displayMode = decision.decisionValue;
-    const uuid = element.getAttribute('data-ab-tests-entity-root');
+    const uuid = element.getAttribute('data-ab-tests-instance-id');
 
     // Validate inputs to prevent security issues
     if (!uuid || !displayMode) {
@@ -53,6 +53,12 @@ class ViewModeDecisionHandler extends BaseDecisionHandler {
               'The entity was rendered with the new view mode.',
               uuid,
             );
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta =
+            decision.decisionData;
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionValue =
+            decision.decisionValue;
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionId =
+            decision.decisionId;
           this.status = 'success';
           return response;
         })

@@ -10,15 +10,15 @@ class BaseTracker extends BaseAction {
    * @return {Promise<unknown>}
    *   The promise of initialization.
    */
-  initialize() {
+  async initialize() {
     return Promise.resolve();
   }
 
   /**
    * Makes a decision about which variant to display.
    *
-   * @param {Decision} decision
-   *   The A/B test decision.
+   * @param {string} trackingInfo
+   *   The tracing information from the server.
    * @param {HTMLElement} element
    *   The element under test.
    *
@@ -27,9 +27,10 @@ class BaseTracker extends BaseAction {
    *
    * @throws {Error}
    *   When there is an error.
-   * @abstract
+   *
+   * @protected
    */
-  track(decision, element) {
+  async track(trackingInfo, element) {
     throw new Error('Tracker must implement track() method.');
   }
 }

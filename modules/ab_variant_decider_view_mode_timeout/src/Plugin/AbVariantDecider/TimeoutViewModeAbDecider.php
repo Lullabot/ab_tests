@@ -4,21 +4,22 @@ declare(strict_types=1);
 
 namespace Drupal\ab_variant_decider_view_mode_timeout\Plugin\AbVariantDecider;
 
+use Drupal\ab_tests\Attribute\AbVariantDecider;
 use Drupal\ab_tests\Plugin\AbVariantDecider\TimeoutAbDeciderBase;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ab_variant_decider.
- *
- * @AbVariantDecider(
- *   id = "timeout_view_mode",
- *   label = @Translation("Timeout (View Mode)"),
- *   description = @Translation("A/B variant decider based on a random timeout."),
- *   supported_features = {"ab_view_modes"},
- *   decider_library = "ab_tests/ab_variant_decider.timeout",
- * )
  */
+#[AbVariantDecider(
+  id: 'timeout_view_mode',
+  label: new TranslatableMarkup('Timeout (View Mode)'),
+  description: new TranslatableMarkup('A/B variant decider based on a random timeout.'),
+  supported_features: ['ab_view_modes'],
+  decider_library: 'ab_tests/ab_variant_decider.timeout',
+)]
 class TimeoutViewModeAbDecider extends TimeoutAbDeciderBase {
 
   /**

@@ -7,14 +7,15 @@ use Drupal\ab_tests\AbAnalyticsPluginManager;
 use Drupal\ab_tests\AbVariantDeciderInterface;
 use Drupal\ab_tests\AbVariantDeciderPluginManager;
 use Drupal\Component\Plugin\ContextAwarePluginInterface;
-use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Block\BlockPluginInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\TypedData\Plugin\DataType\Language;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent;
 use Drupal\layout_builder\EventSubscriber\BlockComponentRenderArray;
@@ -88,32 +89,6 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     ) {
       return;
     }
-    // Do not affect the Ajax re-render of the block.
-    if ($this->routeMatch->getRouteName() === 'ab_blocks.block.ajax_render') {
-      // Attach the library from the analytics tracker.
-      $analytics_tracker_id = $settings['analytics']['id'] ?? 'null';
-      try {
-        $analytics_tracker = $this->analyticsManager->createInstance(
-          $analytics_tracker_id,
-          $settings['analytics']['settings'] ?? [],
-        );
-        assert($analytics_tracker instanceof AbAnalyticsInterface);
-        $tracker_build = $analytics_tracker->toRenderable();
-      }
-      catch (PluginException $e) {
-        $tracker_build = [
-          '#attached' => ['library' => ['ab_tests/ab_analytics_tracker.null']],
-        ];
-      }
-      $build[0]['content']['ab_tests_tracker'] = $tracker_build;
-      $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $tracker_build['#attached'] ?? []);
-      $build[0]['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
-      $build[0]['content']['ab_tests_tracker'] = $tracker_build;
-      // phpcs:ignore
-      unset($build[0]['content']['ab_tests_tracker']['#attached']);
-      $event->setBuild($build);
-      return;
-    }
 
     // 1. Ensure there is a predictable wrapper that we can use for hiding the
     // block while checking with LaunchDarkly, and for AJAX replacements.
@@ -129,18 +104,51 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
           '#type' => 'container',
           '#attributes' => [
             'class' => ['block__ab-testable-block'],
-            'data-ab-blocks-placement-id' => $placement_id,
+            'data-ab-tests-instance-id' => $placement_id,
           ],
-          // Render the original block, in a hidden state, in case there are
-          // client side issues.
           'original' => $original_build,
         ],
       ],
     ];
+    // Do not affect the Ajax re-render of the block.
+    if ($this->routeMatch->getRouteName() === 'ab_blocks.block.ajax_render') {
+      // Attach libraries from all analytics trackers.
+      $metadata = array_reduce(
+        $settings['analytics'] ?? [],
+        function (BubbleableMetadata $metadata, array $tracker_config) {
+          $tracker_id = $tracker_config['id'] ?? NULL;
+          if (!$tracker_id) {
+            return $metadata;
+          }
+          $tracker_settings = $tracker_config['settings'] ?? [];
+          try {
+            $analytics_tracker = $this->analyticsManager->createInstance(
+              $tracker_id,
+              $tracker_settings,
+            );
+            assert($analytics_tracker instanceof AbAnalyticsInterface);
+            $metadata->addCacheableDependency(BubbleableMetadata::createFromRenderArray($analytics_tracker->toRenderable()));
+          }
+          catch (PluginException $e) {
+          }
+          return $metadata;
+        },
+        new BubbleableMetadata(),
+      );
+      $build[0]['content']['#attached'] = NestedArray::mergeDeep($build['content']['#attached'] ?? [], $metadata->getAttachments());
+      $build[0]['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
+      // This is used in the analytics plugins (js) to detect the block to
+      // track.
+      $build[0]['content']['#attributes']['data-ab-tests-tracking-info'] = $placement_id;
+      $event->setBuild($build);
+      return;
+    }
 
     // 2. Hide the original block. Then add a class to it to show it if there
     // are JS errors.
     $style = $original_build['#attributes']['style'] ?? [];
+    // Render the original block, in a hidden state, in case there are
+    // client side issues.
     $style[] = 'display: none';
     $build[0]['content']['original']['#attributes']['style'] = $style;
     $class = $original_build['#attributes']['class'] ?? [];
@@ -149,7 +157,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     $build[0]['content']['original']['#attributes']['class'] = $class;
 
     // 4. Save the block context values for later, in the AJAX renderer.
-    $serialized_context_values = $this->serializeSupportedContextValues($block);
+    $serialized_context_values = $this->serializeSupportedContextValues($event);
     try {
       $encoded_context_values = base64_encode(json_encode(
         $serialized_context_values,
@@ -163,12 +171,11 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     // 4. Use the decider plugin to get the information from the block.
     $configuration = $block->getConfiguration();
     // Remove the non-custom configuration options.
-    $internal_config = array_intersect_key(
+    $internal_config = array_diff_key(
       $configuration,
       array_flip([
         'context_mapping',
         'id',
-        'label',
         'label_display',
         'provider',
       ])
@@ -181,7 +188,15 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
         $settings['variants']['settings'] ?? [],
       );
       assert($variant_decider instanceof AbVariantDeciderInterface);
-      $decider_build = $variant_decider->toRenderable(['experimentsSelector' => '[data-ab-blocks-placement-id]']);
+      $decider_build = $variant_decider->toRenderable(
+        $placement_id,
+        [
+          'experimentsSelector' => sprintf(
+          '[data-ab-tests-instance-id="%s"]',
+          $placement_id,
+          ),
+        ],
+      );
     }
     catch (PluginException $e) {
       $decider_build = [
@@ -191,6 +206,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
 
     // IMPORTANT NOTE: This module currently only works for nodes.
     $root_node = $this->pageService->getNodeFromCurrentRoute();
+    $view_mode = $event->getContexts()['view_mode']?->getContextValue() ?? NULL;
     // Deal with a core bug that won't bubble up attachments correctly.
     $build[0]['content']['#attached'] = NestedArray::mergeDeep($build[0]['content']['#attached'] ?? [], $decider_build['#attached'] ?? []);
     $build[0]['content']['ab_tests_decider'] = $decider_build;
@@ -208,12 +224,17 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       'blockSettings' => $internal_config,
       'encodedContext' => $encoded_context_values,
       'contextMetadata' => [
-        'rootPage' => ['contentType' => $root_node ? $root_node->bundle() : NULL],
+        'rootPage' => [
+          'contentType' => $root_node ?: $root_node->bundle(),
+          'entityType' => $root_node ?: $root_node->getEntityTypeId(),
+          'id' => $root_node ?: $root_node->id(),
+          'viewMode' => $view_mode,
+        ],
         'block' => ['label' => $block->label()],
       ],
       'placementId' => $placement_id,
-      'debug' => (bool) ($settings['debug'] ?? FALSE),
     ];
+    $build[0]['content']['#attached']['drupalSettings']['ab_tests']['debug'] = (bool) ($settings['debug'] ?? FALSE);
     $build[0]['content']['#attached']['drupalSettings']['ab_tests']['features']['ab_blocks'] = $drupal_settings;
     $build[0]['content']['#attributes']['data-ab-tests-decider-status'] = 'idle';
     $build[0]['content']['#attributes']['data-ab-blocks-rendered-via'] = 'server';
@@ -236,20 +257,18 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
    *
    * Example return value: ['entity:node=11234']
    *
-   * @param \Drupal\Core\Block\BlockPluginInterface $block
-   *   The block plugin.
+   * @param \Drupal\layout_builder\Event\SectionComponentBuildRenderArrayEvent $event
+   *   The event.
    *
    * @return array
    *   The serialized context values.
    */
-  protected function serializeSupportedContextValues(BlockPluginInterface $block): array {
+  protected function serializeSupportedContextValues(SectionComponentBuildRenderArrayEvent $event): array {
+    $block = $event->getPlugin();
     $serialized_context_values = [];
-    assert($block instanceof ContextAwarePluginInterface);
-    try {
-      $contexts = $block->getContexts();
-    }
-    catch (ContextException $e) {
-      return [];
+    $contexts = $event->getContexts();
+    if ($block instanceof ContextAwarePluginInterface) {
+      $contexts += $block->getContexts();
     }
     foreach ($contexts as $key => $context) {
       $data_type = $context->getContextDefinition()->getDataType();
@@ -265,6 +284,9 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       elseif ($typed_data instanceof PrimitiveInterface) {
         // Use JSON encoding to preserve the casted value after serialization.
         $serialized_value = json_encode($typed_data->getCastedValue());
+      }
+      elseif ($typed_data instanceof Language) {
+        $serialized_value = json_encode($typed_data->getValue()->getId());
       }
       else {
         continue;

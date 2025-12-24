@@ -10,6 +10,7 @@ use Drupal\Component\Plugin\PluginBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
+use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -17,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVariantDeciderInterface, DependentPluginInterface, ContainerFactoryPluginInterface, ConfigurableInterface, PluginFormInterface {
 
+  use StringTranslationTrait;
   use UiPluginTrait;
 
   /**
@@ -29,19 +31,31 @@ abstract class AbVariantDeciderPluginBase extends PluginBase implements AbVarian
   /**
    * {@inheritdoc}
    */
-  public function toRenderable($additional_settings = []): array {
+  public function toRenderable(string $instance_id, array $additional_settings = []): array {
     $decider_library = $this->getPluginDefinition()['decider_library'] ?? 'ab_tests/ab_variant_decider.null';
     $library_provider = explode('/', $decider_library)[0];
     return [
       '#attached' => [
-        'library' => [$decider_library],
+        'library' => $this->getLibraryDependencies(),
         'drupalSettings' => [
           $library_provider => [
-            'deciderSettings' => $this->getJavaScriptSettings() + $additional_settings,
+            $instance_id => [
+              'deciderSettings' => $this->getJavaScriptSettings() + $additional_settings,
+            ],
           ],
         ],
       ],
     ];
+  }
+
+  /**
+   * Gets the client side library dependencies.
+   *
+   * @return array
+   *   Libraries to attach.
+   */
+  protected function getLibraryDependencies(): array {
+    return [$this->getPluginDefinition()['decider_library'] ?? 'ab_tests/ab_variant_decider.null'];
   }
 
   /**
