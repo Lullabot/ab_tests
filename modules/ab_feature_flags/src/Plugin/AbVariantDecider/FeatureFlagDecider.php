@@ -171,7 +171,7 @@ final class FeatureFlagDecider extends AbVariantDeciderPluginBase {
     );
 
     // Accumulated libraries: decider, algorithms, and conditions.
-    return array_values(array_unique([...$libraries, ...$algorithm_libraries]));
+    return array_values(array_unique([...$algorithm_libraries, ...$libraries]));
   }
 
   /**

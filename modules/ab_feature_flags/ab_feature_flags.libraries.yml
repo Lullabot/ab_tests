@@ -6,3 +6,4 @@ ab_variant_decider.feature_flag:
     - core/once
     - ab_tests/ab_tests
     - feature_flags/feature_flags
+    - feature_flags/base
