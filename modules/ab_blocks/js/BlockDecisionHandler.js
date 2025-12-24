@@ -2,8 +2,17 @@ class BlockDecisionHandler extends BaseDecisionHandler {
   /**
    * @inheritDoc
    */
+  async handleDecision(element, decision) {
+    // Pre-enhance block metadata to avoid a nasty race condition.
+    this._enhanceBlockMetadata(element, decision);
+    return super.handleDecision(element, decision);
+  }
+
+  /**
+   * @inheritDoc
+   */
   async _loadVariant(element, decision) {
-    const blockMetadata = this._enhanceBlockMetadata(element, decision);
+    const blockMetadata = this._getBlockMetadata(element);
     const {
       pluginId,
       placementId,
@@ -91,18 +100,7 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @private
    */
   _enhanceBlockMetadata(element, decision) {
-    const placementId = element.getAttribute('data-ab-tests-instance-id');
-    if (!placementId) {
-      throw new Error(
-        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
-      );
-    }
-    const blockMetadata = this.settings?.blocks?.[placementId];
-    if (!blockMetadata) {
-      throw new Error(
-        `[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`,
-      );
-    }
+    const blockMetadata = this._getBlockMetadata(element);
     // If the HTML element does not have an ID, generate one and store it in the
     // block metadata object.
     blockMetadata.targetHtmlId = element.getAttribute('id');
@@ -135,7 +133,32 @@ class BlockDecisionHandler extends BaseDecisionHandler {
     blockMetadata.variantBlockSettings = parsedDecisionValue;
     blockMetadata.deciderMeta = decision.decisionData;
     blockMetadata.deciderMeta.decisionId = decision.decisionId;
+  }
 
+  /**
+   * Get the metadata in drupalSettings for this block.
+   *
+   * @param {HTMLElement} element
+   *   The block div.
+   *
+   * @return {Object}
+   *   The block metadata object.
+   *
+   * @private
+   */
+  _getBlockMetadata(element) {
+    const placementId = element.getAttribute('data-ab-tests-instance-id');
+    if (!placementId) {
+      throw new Error(
+        '[A/B Blocks] Unable to find block metadata for a block without a placement ID.',
+      );
+    }
+    const blockMetadata = this.settings?.blocks?.[placementId];
+    if (!blockMetadata) {
+      throw new Error(
+        `[A/B Blocks] Unable to find block metadata for a block with placement ID: ${placementId}`,
+      );
+    }
     return blockMetadata;
   }
 

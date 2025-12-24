@@ -171,12 +171,11 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     // 4. Use the decider plugin to get the information from the block.
     $configuration = $block->getConfiguration();
     // Remove the non-custom configuration options.
-    $internal_config = array_intersect_key(
+    $internal_config = array_diff_key(
       $configuration,
       array_flip([
         'context_mapping',
         'id',
-        'label',
         'label_display',
         'provider',
       ])
