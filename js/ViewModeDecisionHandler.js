@@ -53,9 +53,12 @@ class ViewModeDecisionHandler extends BaseDecisionHandler {
               'The entity was rendered with the new view mode.',
               uuid,
             );
-          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta = decision.decisionData;
-          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionValue = decision.decisionValue;
-          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionId = decision.decisionId;
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta =
+            decision.decisionData;
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionValue =
+            decision.decisionValue;
+          drupalSettings.ab_tests.features.ab_view_modes.deciderMeta.decisionId =
+            decision.decisionId;
           this.status = 'success';
           return response;
         })

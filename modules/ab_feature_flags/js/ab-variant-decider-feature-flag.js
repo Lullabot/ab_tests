@@ -1,7 +1,5 @@
-/* global LaunchDarklyDecider, AbTestsManager */
+/* global FeatureFlagDecider */
 ((Drupal, once) => {
-  'use strict';
-
   /**
    * Behavior to initialize timeout decider.
    */
@@ -10,7 +8,7 @@
       const debug = settings?.ab_tests?.debug || false;
       const abTestsManager = new AbTestsManager();
       Object.values(settings?.ab_feature_flags || {}).forEach(
-        (abTestsSettings) => {
+        abTestsSettings => {
           const experimentsSelector =
             abTestsSettings?.deciderSettings?.experimentsSelector;
           if (!experimentsSelector) {
@@ -22,28 +20,42 @@
           }
 
           const elements = once(
-            'ab-variant-decider-launchdarkly',
+            'ab-variant-decider-feature-flags',
             experimentsSelector,
             context,
           );
 
-          elements.forEach((element) => {
-            // Hide the blog post using JS while the decision is being made.
-            element.classList.add('ab-test-hidden');
-            document.addEventListener('ab_tests:abTestFinished', (event) => {
-              event.detail.element.classList.remove('ab-test-hidden');
-            });
-
-            const decider = new FeatureFlagDecider(flagId);
-            abTestsManager.registerDecider(
+          elements.forEach(element =>
+            this._processExperiment(
               element,
-              decider,
-              settings.ab_tests,
+              flagId,
+              abTestsManager,
               debug,
-            );
-          });
+              settings?.ab_tests || {},
+            ),
+          );
         },
       );
+    },
+    _processExperiment(
+      element,
+      flagId,
+      abTestsManager,
+      debug,
+      abTestsSettings,
+    ) {
+      // Hide the blog post using JS while the decision is being made.
+      element.classList.add('ab-test-hidden');
+      document.addEventListener('ab_tests:abTestFinished', event => {
+        const targetElement = event.detail.element;
+        if (!targetElement) {
+          return;
+        }
+        targetElement.classList.remove('ab-test-hidden');
+      });
+
+      const decider = new FeatureFlagDecider(flagId);
+      abTestsManager.registerDecider(element, decider, abTestsSettings, debug);
     },
   };
 })(Drupal, once);
