@@ -94,9 +94,6 @@ class BlockDecisionHandler extends BaseDecisionHandler {
    * @param {Decision} decision
    *   The decision value.
    *
-   * @return {Object}
-   *   The block metadata.
-   *
    * @private
    */
   _enhanceBlockMetadata(element, decision) {
