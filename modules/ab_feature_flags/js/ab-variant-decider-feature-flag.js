@@ -10,7 +10,7 @@
       const debug = settings?.ab_tests?.debug || false;
       const abTestsManager = new AbTestsManager();
       Object.values(settings?.ab_feature_flags || {}).forEach(
-        (abTestsSettings) => {
+        abTestsSettings => {
           const experimentsSelector =
             abTestsSettings?.deciderSettings?.experimentsSelector;
           if (!experimentsSelector) {
@@ -27,10 +27,10 @@
             context,
           );
 
-          elements.forEach((element) => {
+          elements.forEach(element => {
             // Hide the blog post using JS while the decision is being made.
             element.classList.add('ab-test-hidden');
-            document.addEventListener('ab_tests:abTestFinished', (event) => {
+            document.addEventListener('ab_tests:abTestFinished', event => {
               event.detail.element.classList.remove('ab-test-hidden');
             });
 
