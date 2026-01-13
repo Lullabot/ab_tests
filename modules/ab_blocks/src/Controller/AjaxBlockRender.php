@@ -129,7 +129,12 @@ final class AjaxBlockRender extends ControllerBase {
       $settings = $section_component->get('additional')['ab_tests'] ?? [];
       $settings['debug'] = $this->config('ab_tests.settings')
         ->get('debug_mode');
-      $section_component->setConfiguration($configuration);
+
+      $current_configuration = $section_component->toArray()['configuration'] ?? [];
+      $section_component->setConfiguration([
+        ...$current_configuration,
+        ...$configuration,
+      ]);
       $build = $section_component->toRenderArray($context_values);
     }
     catch (\Exception $e) {
@@ -249,13 +254,15 @@ final class AjaxBlockRender extends ControllerBase {
   }
 
   /**
-   * Resolves the root entity context from context values using guard clauses.
+   * Resolves the root entity context from context values.
    *
    * @param array $context_values
    *   The context values to search.
    *
    * @return \Drupal\Core\Plugin\Context\Context|null
    *   The root entity context if found, otherwise NULL.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\ContextException
    */
   private function resolveRootEntityContext(array $context_values): ?Context {
     $context_keys = ['layout_builder.entity', 'entity', 'node'];

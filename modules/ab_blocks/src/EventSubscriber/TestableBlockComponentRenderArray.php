@@ -225,9 +225,9 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
       'encodedContext' => $encoded_context_values,
       'contextMetadata' => [
         'rootPage' => [
-          'contentType' => $root_node ?: $root_node->bundle(),
-          'entityType' => $root_node ?: $root_node->getEntityTypeId(),
-          'id' => $root_node ?: $root_node->id(),
+          'contentType' => $root_node ? $root_node->bundle() : NULL,
+          'entityType' => $root_node ? $root_node->getEntityTypeId() : NULL,
+          'id' => $root_node ? $root_node->id() : NULL,
           'viewMode' => $view_mode,
         ],
         'block' => ['label' => $block->label()],
