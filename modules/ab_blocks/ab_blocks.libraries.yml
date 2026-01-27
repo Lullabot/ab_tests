@@ -2,6 +2,9 @@ ab_blocks:
   js:
     js/BlockDecisionHandler.js: { }
     js/BlockTrackerBase.js: { }
+  css:
+    component:
+      css/ab_blocks.css: {}
   dependencies:
     - core/drupal
     - core/drupalSettings

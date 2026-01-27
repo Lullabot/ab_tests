@@ -147,9 +147,6 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
     // 2. Hide the original block. Then add a class to it to show it if there
     // are JS errors.
     $style = $original_build['#attributes']['style'] ?? [];
-    // Render the original block, in a hidden state, in case there are
-    // client side issues.
-    $style[] = 'display: none';
     $build[0]['content']['original']['#attributes']['style'] = $style;
     $class = $original_build['#attributes']['class'] ?? [];
     $class[] = 'block--original';
@@ -297,6 +294,7 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
         $serialized_value,
       );
     }
+
     return $serialized_context_values;
   }
 
