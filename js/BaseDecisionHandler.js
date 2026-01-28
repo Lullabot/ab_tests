@@ -104,13 +104,14 @@ class BaseDecisionHandler {
    */
   async handleDecision(element, decision) {
     if (this._decisionChangesNothing(element, decision)) {
+      // We show the block right away for perceived performance. However, we
+      // will re-render the block anyway so we can load analytics tracking.
       this.hideLoadingSkeleton(element, this.debug);
-    } else {
-      try {
-        await this._loadVariant(element, decision);
-      } catch (error) {
-        this._handleError(error, element, decision);
-      }
+    }
+    try {
+      await this._loadVariant(element, decision);
+    } catch (error) {
+      this._handleError(error, element, decision);
     }
 
     // Dispatch decision event.
