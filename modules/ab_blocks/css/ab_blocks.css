@@ -1,6 +1,6 @@
 .ab-test-hidden .block--original {
-  display: none;
+  visibility: hidden;
 }
 .ab-test-loading {
-  display: none;
+  visibility: hidden;
 }
