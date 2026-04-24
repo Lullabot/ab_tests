@@ -7,6 +7,7 @@ namespace Drupal\Tests\ab_tests\Functional;
 use Drupal\Tests\ab_tests\AbTestsTestBaseTrait;
 use Drupal\Tests\BrowserTestBase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Tests the A/B Tests module lifecycle.
@@ -14,6 +15,7 @@ use PHPUnit\Framework\Attributes\Group;
  * @group ab_tests
  */
 #[Group('ab_tests')]
+#[RunTestsInSeparateProcesses]
 class ModuleLifecycleTest extends BrowserTestBase {
 
   use AbTestsTestBaseTrait;
@@ -56,7 +58,7 @@ class ModuleLifecycleTest extends BrowserTestBase {
       'is_active' => TRUE,
       'default' => ['display_mode' => 'node.full'],
       'variants' => ['id' => 'null'],
-      'analytics' => ['id' => 'null'],
+      'analytics' => ['null' => ['id' => 'null']],
     ];
     $this->drupalLogin($this->adminUser);
   }

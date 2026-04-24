@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Tests the node display with A/B testing enabled.
@@ -12,6 +13,7 @@ use PHPUnit\Framework\Attributes\Group;
  * @group ab_tests
  */
 #[Group('ab_tests')]
+#[RunTestsInSeparateProcesses]
 class NodeDisplayTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**
@@ -34,10 +36,13 @@ class NodeDisplayTest extends AbTestsFunctionalJavaScriptTestBase {
 
     $settings = $this->getDrupalSettings();
     $this->assertArrayHasKey('ab_tests', $settings);
-    $decider_settings = $settings['ab_tests']['deciderSettings'] ?? [];
+    $decider_settings = $settings['ab_tests'][$node->uuid()]['deciderSettings'] ?? [];
     $this->assertEquals(['min' => 200, 'max' => 250], $decider_settings['timeout']);
     $this->assertEquals(['full', 'teaser'], $decider_settings['availableVariants']);
-    $this->assertEquals('[data-ab-tests-instance-id]', $decider_settings['experimentsSelector']);
+    $this->assertEquals(
+      sprintf('[data-ab-tests-instance-id="%s"]', $node->uuid()),
+      $decider_settings['experimentsSelector'],
+    );
     $this->assertEquals('full', $settings['ab_tests']['features']['ab_view_modes']['defaultDecisionValue']);
     $this->assertFalse($settings['ab_tests']['debug']);
   }

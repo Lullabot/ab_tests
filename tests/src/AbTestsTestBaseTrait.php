@@ -63,10 +63,12 @@ trait AbTestsTestBaseTrait {
           ],
         ],
         'analytics' => [
-          'id' => 'mock_tracker',
-          'settings' => [
-            'api_key' => '123asdf',
-            'tracking_domain' => 'track.mocktracker.local',
+          'mock_tracker' => [
+            'id' => 'mock_tracker',
+            'settings' => [
+              'api_key' => '123asdf',
+              'tracking_domain' => 'track.mocktracker.local',
+            ],
           ],
         ],
       ];

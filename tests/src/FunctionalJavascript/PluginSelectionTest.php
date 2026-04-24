@@ -6,6 +6,7 @@ namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use Drupal\node\Entity\NodeType;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Tests the plugin selection functionality.
@@ -13,6 +14,7 @@ use PHPUnit\Framework\Attributes\Group;
  * @group ab_tests
  */
 #[Group('ab_tests')]
+#[RunTestsInSeparateProcesses]
 class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**
@@ -91,15 +93,15 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // The timeout plugin configuration form should now be shown.
-    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-variants-config-wrapper-settings"] > legend', 'Timeout (View Mode)');
+    $this->assertSession()->elementTextEquals('css', '[data-drupal-selector="edit-ab-tests-variants-config-wrapper-timeout-view-mode-settings"] > legend', 'Timeout (View Mode)');
     // Confirm that the timeout plugin form includes specific fields.
-    $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][settings][timeout][min]"]');
-    $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][settings][timeout][max]"]');
+    $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][min]"]');
+    $this->assertSession()->elementExists('css', 'input[name="ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][max]"]');
 
     $page->selectFieldOption('ab_tests[variants][id]', 'null');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // The timeout plugin configuration form should not be shown.
-    $this->assertSession()->elementNotExists('css', '#edit-ab-tests-variants-config-wrapper-settings');
+    $this->assertSession()->elementNotExists('css', '#edit-ab-tests-variants-config-wrapper-timeout-view-mode-settings');
 
     // Select the mock tracker plugin (now using checkboxes).
     $page->checkField('ab_tests[analytics][id][mock_tracker]');
@@ -120,10 +122,16 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->checkField('ab_tests[analytics][id][mock_tracker]');
     $page->checkField('ab_tests[analytics][id][null]');
     $this->assertSession()->assertWaitOnAjaxRequest();
-    // Both configuration forms should be shown.
+    // Both configuration wrappers should be shown.
     $this->assertSession()->elementExists('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-mock-tracker-settings"]');
-    // Null tracker should not have configuration form.
-    $this->assertSession()->elementNotExists('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-null-settings"]');
+    // The null tracker has no configurable options, so its wrapper only shows
+    // the empty-options placeholder.
+    $this->assertSession()->elementExists('css', '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-null-settings"]');
+    $this->assertSession()->elementTextContains(
+      'css',
+      '[data-drupal-selector="edit-ab-tests-analytics-config-wrapper-null-settings"]',
+      'No configuration options available for this plugin',
+    );
   }
 
   /**
@@ -133,8 +141,14 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     // Access the content type edit form.
     $this->drupalGet('admin/structure/types/manage/' . $this->contentType->id());
 
-    // Enable A/B testing.
+    // Edit node-type-native fields that sit OUTSIDE the `ab_tests` fieldset.
+    // Their preservation across Save proves validation scoping does not strip
+    // unrelated form values when the A/B Tests validate handlers run.
     $page = $this->getSession()->getPage();
+    $page->fillField('name', 'A/B Renamed Type');
+    $page->fillField('description', 'Updated description for regression proof.');
+
+    // Enable A/B testing.
     $page->clickLink('A/B Tests');
     $page->checkField('ab_tests[is_active]');
 
@@ -145,11 +159,11 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $page->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Fill in the timeout configuration.
-    $page->fillField('ab_tests[variants][config_wrapper][settings][timeout][min]', '500');
-    $page->fillField('ab_tests[variants][config_wrapper][settings][timeout][max]', '2000');
+    $page->fillField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][min]', '500');
+    $page->fillField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][max]', '2000');
     // Select available variants.
-    $page->checkField('ab_tests[variants][config_wrapper][settings][available_variants][rss]');
-    $page->checkField('ab_tests[variants][config_wrapper][settings][available_variants][teaser]');
+    $page->checkField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][available_variants][rss]');
+    $page->checkField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][available_variants][teaser]');
 
     // Select the mock tracker plugin (now using checkboxes).
     $page->checkField('ab_tests[analytics][id][mock_tracker]');
@@ -161,10 +175,22 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     // Save the form.
     $page->pressButton('Save');
 
-    $this->assertSession()->pageTextContains('The content type A/B Test Type has been updated.');
+    $this->assertSession()->pageTextContains('The content type A/B Renamed Type has been updated.');
+
+    // Verify the native node-type fields were preserved through Save.
+    $content_type = \Drupal::entityTypeManager()->getStorage('node_type')->load($this->contentType->id());
+    $this->assertEquals(
+      'A/B Renamed Type',
+      $content_type->label(),
+      'Node type label survived the A/B Tests validate handlers.',
+    );
+    $this->assertEquals(
+      'Updated description for regression proof.',
+      $content_type->getDescription(),
+      'Node type description survived the A/B Tests validate handlers.',
+    );
 
     // Verify the settings were saved.
-    $content_type = \Drupal::entityTypeManager()->getStorage('node_type')->load($this->contentType->id());
     $saved_settings = $content_type->getThirdPartySetting('ab_tests', 'ab_tests');
 
     $this->assertEquals('timeout_view_mode', $saved_settings['variants']['id']);
@@ -195,10 +221,10 @@ class PluginSelectionTest extends AbTestsFunctionalJavaScriptTestBase {
     $this->getSession()->getPage()->selectFieldOption('ab_tests[variants][id]', 'timeout_view_mode');
     $this->assertSession()->assertWaitOnAjaxRequest();
     // Fill in invalid configuration (min > max).
-    $this->getSession()->getPage()->fillField('ab_tests[variants][config_wrapper][settings][timeout][min]', '2000');
-    $this->getSession()->getPage()->fillField('ab_tests[variants][config_wrapper][settings][timeout][max]', '500');
+    $this->getSession()->getPage()->fillField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][min]', '2000');
+    $this->getSession()->getPage()->fillField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][timeout][max]', '500');
     // Select only one variant (invalid - needs at least 2).
-    $this->getSession()->getPage()->checkField('ab_tests[variants][config_wrapper][settings][available_variants][rss]');
+    $this->getSession()->getPage()->checkField('ab_tests[variants][config_wrapper][timeout_view_mode_settings][available_variants][rss]');
 
     // Save the form.
     $this->getSession()->getPage()->pressButton('Save');

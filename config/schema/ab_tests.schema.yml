@@ -38,11 +38,14 @@ node.type.*.third_party.ab_tests:
             settings:
               type: ab_tests.variants.[%parent.id]
         analytics:
-          type: mapping
-          label: 'Analytics tracker configuration'
-          mapping:
-            id:
-              type: string
-              label: 'Analytics tracker plugin ID'
-            settings:
-              type: ab_tests.analytics.[%parent.id]
+          type: sequence
+          label: 'Analytics tracker configurations'
+          sequence:
+            type: mapping
+            label: 'Analytics tracker configuration'
+            mapping:
+              id:
+                type: string
+                label: 'Analytics tracker plugin ID'
+              settings:
+                type: ab_tests.analytics.[%parent.id]
