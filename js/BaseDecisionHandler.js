@@ -182,7 +182,7 @@ class BaseDecisionHandler {
    * @return {Promise}
    *   Resolves when the variant is loaded.
    *
-   * @private
+   * @protected
    */
   async _loadVariant(element, decision) {
     return new Promise(resolve => {
@@ -206,7 +206,7 @@ class BaseDecisionHandler {
    * @param {Decision} decision
    *   The decision.
    *
-   * @private
+   * @protected
    */
   _handleError(error, element, decision) {
     this.error = true;
