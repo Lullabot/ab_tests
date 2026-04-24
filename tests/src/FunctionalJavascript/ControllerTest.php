@@ -6,6 +6,7 @@ namespace Drupal\Tests\ab_tests\FunctionalJavascript;
 
 use Drupal\Component\Serialization\Json;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Tests the A/B Tests controller functionality.
@@ -13,6 +14,7 @@ use PHPUnit\Framework\Attributes\Group;
  * @group ab_tests
  */
 #[Group('ab_tests')]
+#[RunTestsInSeparateProcesses]
 class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
 
   /**
@@ -31,7 +33,7 @@ class ControllerTest extends AbTestsFunctionalJavaScriptTestBase {
           'available_variants' => ['full' => 'full', 'teaser' => 'teaser'],
         ],
       ],
-      'analytics' => ['id' => 'null'],
+      'analytics' => ['null' => ['id' => 'null']],
     ]);
   }
 
