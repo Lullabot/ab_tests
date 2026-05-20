@@ -353,7 +353,9 @@ final class AjaxBlockRender extends ControllerBase {
       return NULL;
     }
 
-    // Use array_reduce to find the first component that matches the UUID.
+    // Read from getComponents() — a section that doesn't have the UUID returns
+    // NULL via the array offset, whereas getComponent() throws and aborts the
+    // reducer before later sections are checked.
     $sections = iterator_to_array($layout_field);
     return array_reduce($sections, function (?SectionComponent $carry, $section_list_item) use ($component_uuid) {
       if ($carry !== NULL) {
@@ -361,7 +363,7 @@ final class AjaxBlockRender extends ControllerBase {
       }
       /** @var \Drupal\layout_builder\Section $section */
       $section = $section_list_item->section;
-      return $section->getComponent($component_uuid);
+      return $section->getComponents()[$component_uuid] ?? NULL;
     });
   }
 
