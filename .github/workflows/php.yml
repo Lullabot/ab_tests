@@ -18,12 +18,6 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-      # Set up Chrome for JavaScript tests
-      chrome:
-        image: selenium/standalone-chrome:4.15.0
-        ports:
-          - 4444:4444
-        options: --health-cmd="/opt/bin/check-grid.sh" --health-interval=10s --health-timeout=5s --health-retries=3
 
     strategy:
       fail-fast: false
@@ -78,16 +72,32 @@ jobs:
           echo "pid=$!" >> $GITHUB_OUTPUT
         id: server
 
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+        with:
+          install-chromedriver: true
+
+      - name: Start ChromeDriver
+        run: |
+          "${{ steps.setup-chrome.outputs.chromedriver-path }}" --port=4444 --allowed-ips=127.0.0.1 --log-level=INFO >/tmp/chromedriver.log 2>&1 &
+          echo "chromedriver-pid=$!" >> $GITHUB_OUTPUT
+        id: chromedriver
+
       - name: Wait for services to be ready
         run: |
-          # Wait for Chrome to be ready
-          until curl -sSf http://localhost:4444/wd/hub/status > /dev/null; do
-            echo "Waiting for Chrome service..."
+          # Wait for ChromeDriver to be ready.
+          for i in $(seq 1 30); do
+            if curl -sSf http://localhost:4444/status > /dev/null; then
+              echo "ChromeDriver is ready"
+              break
+            fi
+            echo "Waiting for ChromeDriver..."
             sleep 2
           done
-          echo "Chrome service is ready"
+          curl -sSf http://localhost:4444/status
 
-          # Wait for MySQL to be ready
+          # Wait for MySQL to be ready.
           until mysql -h 127.0.0.1 -u root -proot -e "SELECT 1"; do
             echo "Waiting for MySQL service..."
             sleep 2
@@ -99,18 +109,20 @@ jobs:
         run: |
           php ./core/scripts/drupal install
 
-#      - name: Run Unit Tests
-#        run: |
-#          ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Unit
-#
-#      - name: Run Kernel Tests
-#        run: |
-#          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist modules/ab_tests/tests/src/Kernel
-#
       - name: Run Functional Tests
         run: |
           SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped modules/ab_tests/tests/src/Functional
 
       - name: Run Functional JavaScript Tests
         run: |
-          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions"]}}, "http://localhost:4444/wd/hub"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript
+          SIMPLETEST_BASE_URL=http://127.0.0.1:8080 SIMPLETEST_DB=mysql://root:root@127.0.0.1/drupal MINK_DRIVER_ARGS_WEBDRIVER='["chrome", {"browserName":"chrome","goog:chromeOptions":{"args":["--disable-gpu", "--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--disable-extensions"]}}, "http://localhost:4444"]' ./vendor/bin/phpunit -c core/phpunit.xml.dist --fail-on-skipped --debug modules/ab_tests/tests/src/FunctionalJavascript
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== ChromeDriver log ==="
+          cat /tmp/chromedriver.log || true
+          echo "=== ChromeDriver status ==="
+          curl -s http://localhost:4444/status || echo "ChromeDriver unreachable"
+          echo "=== Web server check ==="
+          curl -I http://127.0.0.1:8080 || echo "Web server unreachable"
