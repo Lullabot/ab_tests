@@ -7,6 +7,7 @@ namespace Drupal\ab_blocks\Controller;
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Ajax\InsertCommand;
 use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Cache\CacheableAjaxResponse;
@@ -131,10 +132,7 @@ final class AjaxBlockRender extends ControllerBase {
         ->get('debug_mode');
 
       $current_configuration = $section_component->toArray()['configuration'] ?? [];
-      $section_component->setConfiguration([
-        ...$current_configuration,
-        ...$configuration,
-      ]);
+      $section_component->setConfiguration(NestedArray::mergeDeep($current_configuration, $configuration));
       $build = $section_component->toRenderArray($context_values);
     }
     catch (\Exception $e) {
