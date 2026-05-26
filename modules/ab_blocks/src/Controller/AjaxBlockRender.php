@@ -132,7 +132,13 @@ final class AjaxBlockRender extends ControllerBase {
         ->get('debug_mode');
 
       $current_configuration = $section_component->toArray()['configuration'] ?? [];
-      $section_component->setConfiguration(NestedArray::mergeDeep($current_configuration, $configuration));
+      $merged_configuration = NestedArray::mergeDeep($current_configuration, $configuration);
+      // If the configuration from the URL data has an explicit context mapping,
+      // use that instead of merging.
+      if (array_key_exists('context_mapping', $configuration)) {
+        $merged_configuration['context_mapping'] = $configuration['context_mapping'];
+      }
+      $section_component->setConfiguration($merged_configuration);
       $build = $section_component->toRenderArray($context_values);
     }
     catch (\Exception $e) {
