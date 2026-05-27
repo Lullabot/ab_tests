@@ -54,8 +54,14 @@ final class TestableBlockComponentRenderArray implements EventSubscriberInterfac
    * {@inheritdoc}
    */
   public static function getSubscribedEvents(): array {
-    // This should run after rendering the initial block.
-    $priority = (BlockComponentRenderArray::getSubscribedEvents()[LayoutBuilderEvents::SECTION_COMPONENT_BUILD_RENDER_ARRAY][1] ?? 100) - 20;
+    // This subscriber wraps the entire block render array with a new structure.
+    // Any subsequent subscriber that adds attributes (e.g. CSS classes) to
+    // $build['#attributes'] would be writing to the wrapper root — an array
+    // key with no corresponding HTML element — rather than to the actual block
+    // element. To avoid this, we must run AFTER all other subscribers that may
+    // modify block attributes. We use a large offset so that we fire well
+    // below the typical range (0–100) used by attribute-modifying subscribers.
+    $priority = (BlockComponentRenderArray::getSubscribedEvents()[LayoutBuilderEvents::SECTION_COMPONENT_BUILD_RENDER_ARRAY][1] ?? 100) - 90;
     return [
       LayoutBuilderEvents::SECTION_COMPONENT_BUILD_RENDER_ARRAY => [
         'onBuildRender',
