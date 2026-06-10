@@ -15,6 +15,8 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityDisplayRepositoryInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
+use Drupal\Core\Form\EnforcedResponseException;
+use Drupal\Core\Form\FormAjaxException;
 use Drupal\Core\Plugin\Context\Context;
 use Drupal\Core\Plugin\Context\ContextDefinition;
 use Drupal\Core\Plugin\Context\EntityContext;
@@ -141,6 +143,13 @@ final class AjaxBlockRender extends ControllerBase {
       $section_component->setConfiguration($merged_configuration);
       $build = $section_component->toRenderArray($context_values);
     }
+    catch (FormAjaxException | EnforcedResponseException $e) {
+      // A form embedded in the block is being submitted. These exceptions are
+      // control flow for the form API: let the form AJAX pipeline
+      // (FormAjaxSubscriber, EnforcedFormResponseSubscriber) build the
+      // response for the form's #ajax callback.
+      throw $e;
+    }
     catch (\Exception $e) {
       $this->logError('Block configuration failed for plugin @plugin_id with placement @placement_id: @message', [
         '@plugin_id' => $plugin_id,
@@ -155,6 +164,10 @@ final class AjaxBlockRender extends ControllerBase {
       $rendered = $this->renderer->executeInRenderContext($context, function () use ($build) {
         return $this->renderer->render($build, TRUE);
       });
+    }
+    catch (FormAjaxException | EnforcedResponseException $e) {
+      // See the catch block above: form API control flow must propagate.
+      throw $e;
     }
     catch (\Exception $e) {
       $this->logError('Block rendering failed for plugin @plugin_id with placement @placement_id: @message', [

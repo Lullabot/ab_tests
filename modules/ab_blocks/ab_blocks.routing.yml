@@ -4,6 +4,7 @@ ab_blocks.block.ajax_render:
     _controller: Drupal\ab_blocks\Controller\AjaxBlockRender
   methods:
     - GET
+    - POST
   requirements:
     _permission: 'access content'
 
